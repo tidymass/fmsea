@@ -62,10 +62,7 @@ globalVariables(
     "fill",
     "n",
     "x",
-    "minus_h2o_number",
-    "h_number",
-    "o_number",
-    "h_diff",
-    "o_diff"
+    "compound_class",
+    "N"
   )
 )
