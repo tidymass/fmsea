@@ -4,7 +4,7 @@ url: https://tidymass.github.io/fmsea/
 
 home:
   strip_header: false
-  title: fmsea
+  title: fMSEA package
   links:
   - text: Find me
     href: https://www.shenxt.info/
