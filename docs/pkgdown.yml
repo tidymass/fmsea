@@ -2,7 +2,7 @@ pandoc: 2.17.1.1
 pkgdown: 2.0.1
 pkgdown_sha: ~
 articles: {}
-last_built: 2022-06-27T21:32Z
+last_built: 2022-06-27T22:01Z
 urls:
   reference: https://tidymass.github.io/fmsea/reference
   article: https://tidymass.github.io/fmsea/articles
