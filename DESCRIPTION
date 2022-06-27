@@ -1,0 +1,68 @@
+Type: Package
+Package: fmsea
+Title: Metabolic feature based metabolite set enrichment analysis
+Version: 0.99.1
+Date: 2022-06-27
+Authors@R: c(
+    person(given = "Xiaotao",
+           family = "Shen",
+           role = c("aut", "cre"),
+           email = "shenxt1990@outlook.com",
+           comment = c(ORCID = "0000-0002-9608-9964"))
+           )
+Description: Metabolic feature based metabolite set enrichment analysis.
+License: GPL-2 | file LICENSE
+URL: https://github.com/tidymass/fmsea
+BugReports: https://github.com/tidymass/fmsea/issues
+Depends: 
+    R (>= 4.1)
+Imports:
+    BiocParallel,
+    crayon,
+    data.table,
+    dplyr,
+    future,
+    furrr,
+    tidyr,
+    ggplot2,
+    pbapply,
+    methods,
+    graphics,
+    grDevices,
+    utils,
+    stats,
+    readr,
+    readxl,
+    RColorBrewer,
+    stringr,
+    tibble,
+    magrittr,
+    masstools (>= 0.99.13),
+    purrr,
+    plyr,
+    MSnbase,
+    ProtGenerics,
+    plotly,
+    massdataset,
+    cli,
+    rstudioapi,
+    rlang,
+    ggsci,
+    progress
+Suggests: 
+    knitr,
+    rmarkdown,
+    BiocStyle,
+    RUnit,
+    BiocGenerics,
+    testthat (>= 3.0.0)
+VignetteBuilder: 
+    knitr
+biocViews: Metabolomics, MassSpectrometry
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
+Remotes: 
+    gitlab::jaspershen/masstools,
+    gitlab::jaspershen/massdataset
+Config/testthat/edition: 3
