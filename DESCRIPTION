@@ -1,8 +1,8 @@
 Type: Package
 Package: fmsea
 Title: Metabolic feature based metabolite set enrichment analysis
-Version: 0.99.1
-Date: 2022-06-27
+Version: 0.99.2
+Date: 2024-01-12
 Authors@R: c(
     person(given = "Xiaotao",
            family = "Shen",
@@ -46,8 +46,6 @@ Imports:
     massdataset,
     cli,
     rstudioapi,
-    rlang,
-    ggsci,
     progress
 Suggests: 
     knitr,
@@ -61,7 +59,7 @@ VignetteBuilder:
 biocViews: Metabolomics, MassSpectrometry
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.3
 Remotes: 
     gitlab::jaspershen/masstools,
     gitlab::jaspershen/massdataset
