@@ -1,7 +1,7 @@
 #' @title Show the base information of fmsea pacakge
 #' @description Show the base information of fmsea pacakge.
 #' @author Xiaotao Shen
-#' \email{shenxt1990@@outlook.com}
+#' \email{xiaotao.shen@@outlook.com}
 #' @return A ASCII log of fmsea
 #' @importFrom magrittr %>%
 #' @importFrom crayon red yellow green bgRed

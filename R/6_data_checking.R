@@ -1,7 +1,7 @@
 #' @title Check data format for fMSEA
 #' @description Check data format for fMSEA
 #' @author Xiaotao Shen
-#' \email{shenxt1990@@outlook.com}
+#' \email{xiaotao.shen@@outlook.com}
 #' @param object_list object list, the items should be mass_dataset class from massdataset
 #' @return Checking results
 #' @export

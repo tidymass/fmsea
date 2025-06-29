@@ -1,63 +1,125 @@
-#' do_msea3 <- function(feature_table,
+#' ####do_msea2
+#' #' @title do_msea2
+#' #' @description Annotate isotopes for known formula compounds.
+#' #' @author Xiaotao Shen
+#' #' \email{shenxt@@stanford.edu}
+#' #' @param formula formula
+#' #' @param adduct adduct
+#' #' @param charge charge
+#' #' @param mz
+#' #' @param rt
+#' #' @param peak.mz
+#' #' @param peak.rt
+#' #' @param rt.tol
+#' #' @param max.isotope
+#' #' @export
+#' 
+#' do_msea2 <- function(feature_table,
 #'                      metabolite_set,
 #'                      exponent = 1,
 #'                      perm_num = 1000,
 #'                      min_size = 5,
 #'                      max_size = 1000,
 #'                      pvalue_cutoff = 0.2,
-#'                      p_adjust_method = c("fdr",
-#'                                          "holm",
-#'                                          "hochberg",
-#'                                          "hommel",
-#'                                          "bonferroni",
-#'                                          "BH",
-#'                                          "BY",
-#'                                          "none"),
+#'                      p_adjust_method = "fdr",
 #'                      seed = FALSE,
 #'                      verbose = TRUE,
-#'                      threads = 3,
 #'                      ...) {
-#'   browser()
-#'   p_adjust_method = match.arg(p_adjust_method)
 #'   ##filter pathways according to pathway size
-#'   if (length(metabolite_set) < min_size |
-#'       length(metabolite_set) > max_size) {
+#'   
+#'   metabolite_set <-
+#'     filter_metabolite_set2(
+#'       metabolite_set = metabolite_set,
+#'       feature_table = feature_table,
+#'       min_size = min_size,
+#'       max_size = max_size
+#'     )
+#'   
+#'   if (length(metabolite_set) == 0) {
 #'     return(NULL)
 #'   }
 #'   
 #'   ##find where are the metabolites in the feature table
-#'   ##for each metabolite in metabolite set, its position in feature table
 #'   match_idx <-
-#'     purrr::map(metabolite_set, function(x) {
+#'     purrr::map(metabolite_set[[1]], function(x) {
 #'       which(x == feature_table$Lab.ID)
 #'     })
 #'   
 #'   ##for the metabolites in the feature set,
-#'   ##all the matched peaks should be remained, other metabolites
-#'   ##only remain one matched peak,
+#'   ##all the peaks should be remained, other peaks only remain one metabolite,
 #'   ##either one is fine
-#'   ###idx is the index of all metabolites in metabolite set in feature_table
 #'   idx <-
 #'     sort(unique(unlist(match_idx)))
 #'   
 #'   ##for the metabolites in feature sets
 #'   feature_table1 <-
-#'     feature_table[idx,]
+#'     feature_table[idx,] %>%
+#'     dplyr::filter(isotope == "[M]")
 #'   
-#'   #for each compound_class, if the peaks are in different condition_class
-#'   #(for example, if the condition is fold change, some peaks fold change > 1 and some
-#'   #peaks fold change < 1), we should think some method to handle this condition
+#'   ##for each compound_class, if the peaks are in different condition_class,
+#'   ##then it should be classed into
+#'   ##different classes and then score again
+#'   ##
+#'   ##and if there are [M+H] or [M-H] in the compound_class, only remain them
+#'   #     feature_table1 <-
+#'   # feature_table1
+#'   #     dplyr::arrange(compound_class) %>%
+#'   #     dplyr::mutate(fc_class =
+#'   #                     dplyr::case_when(fc >= 0 ~ "increase",
+#'   #                                      TRUE ~ "decrease")) %>%
+#'   #     plyr::dlply(.variables = .(compound_class)) %>%
+#'   #     purrr::map(
+#'   #       .f = function(x) {
+#'   #         if (length(unique(x$fc_class)) != 1) {
+#'   #           new_score <-
+#'   #             x %>%
+#'   #             plyr::dlply(.variables = .(fc_class)) %>%
+#'   #             purrr::map(
+#'   #               .f = function(y) {
+#'   #                 score_mfc(mfc = y)
+#'   #               }
+#'   #             ) %>%
+#'   #             unlist()
+#'   #           x$score[x$fc_class == "decrease"] <- new_score[1]
+#'   #           x$score[x$fc_class == "increase"] <- new_score[1]
+#'   #           if (length(unique(new_score)) != 1) {
+#'   #             x <-
+#'   #               x %>%
+#'   #               dplyr::filter(score != min(new_score))
+#'   #           }
+#'   #         }
+#'   #
+#'   #         if(any(x$Adduct == "(M+H)+") | any(x$Adduct == "(M-H)-")){
+#'   #           x <-
+#'   #             x %>%
+#'   #             dplyr::filter(Adduct == "(M+H)+" | Adduct == "(M-H)-")
+#'   #         }
+#'   #       }
+#'   #     ) %>%
+#'   #     dplyr::bind_rows() %>%
+#'   #     dplyr::select(-fc_class) %>%
+#'   #     dplyr::arrange(dplyr::desc(fc)) %>%
+#'   #     dplyr::filter(isotope == "[M]")
+#'   #
+#'   #
+#'   # ##for each Lab.ID, only remain the compound_class with the max score
+#'   #     feature_table1 <-
+#'   #       feature_table1 %>%
+#'   #       plyr::dlply(.variables = .(Lab.ID)) %>%
+#'   #       purrr::map(function(x) {
+#'   #         x %>%
+#'   #           dplyr::filter(score == max(score))
+#'   #       }) %>%
+#'   #       dplyr::bind_rows() %>%
+#'   #       dplyr::arrange(desc(fc))
 #'   
-#'   ##for the metabolites are not in the feature set, they only affect the rank of
-#'   ##the metabolites, so only remain one time for each peak.
+#'   
+#'   ##for the metabolites are not in the feature set
 #'   feature_table2 <-
 #'     feature_table[-idx,] %>%
+#'     dplyr::filter(isotope == "[M]") %>%
+#'     dplyr::filter(!name %in% feature_table1$name) %>%
 #'     dplyr::distinct(name, .keep_all = TRUE)
-#'   
-#'   
-#'   ###faeture_table1 and feature_table2 have a lot of overlapped features
-#'   ##we should remainthe overlapped features in feature table2, because the annotaiton is not confirmed
-#'   # intersect(feature_table1$name, feature_table2$name)
 #'   
 #'   feature_table <-
 #'     rbind(feature_table1,
@@ -68,109 +130,85 @@
 #'     message("calculating observed enrichment scores...")
 #'   }
 #'   
-#'   ###observed_info is the running enrichment score for each metabolite (peak)
-#'   ###in feature_table. And ES is the enrichment score
-#'   observed_info = get_msea_score2(
-#'     feature_table = feature_table,
-#'     metabolite_set = metabolite_set,
-#'     exponent = exponent
-#'   )
+#'   # browser()
 #'   
-#'   observed_score <- observed_info$ES
+#'   observed_info <- lapply(metabolite_set, function(x)
+#'     get_msea_score2(
+#'       metabolite_set = x,
+#'       feature_table = feature_table,
+#'       exponent = exponent
+#'     ))
+#'   
+#'   
+#'   observed_score <- sapply(observed_info, function(x)
+#'     x$ES)
 #'   
 #'   if (verbose) {
 #'     message("calculating permutation scores...")
 #'   }
 #'   
-#'   ###here, we need to do the permutation test
 #'   if (seed) {
 #'     seeds <- sample.int(perm_num)
 #'   }
 #'   
-#'   if (tinyTools::get_os() == "windows") {
-#'     bpparam =
-#'       BiocParallel::SnowParam(workers = threads,
-#'                               progressbar = TRUE)
-#'   } else{
-#'     bpparam = BiocParallel::MulticoreParam(workers = threads,
-#'                                            progressbar = TRUE)
-#'   }
-#'   
-#'   perm_scores <-
-#'     BiocParallel::bplapply(1:perm_num, function(i) {
-#'       if (seed) {
-#'         set.seed(seeds[i])
-#'       }
-#'       
-#'       perm_msea_es2(
-#'         feature_table = feature_table,
-#'         metabolite_set = metabolite_set,
-#'         exponent = exponent
-#'       )
-#'     }, BPPARAM = bpparam) %>%
-#'     unlist()
-#'   
-#'   ####mean_pos_null_es is the mean value of all the positive null enrichment score
-#'   mean_pos_null_es <- mean(perm_scores[perm_scores >= 0])
-#'   ####mean_neg_null_es is the mean value of all the negative null enrichment score
-#'   mean_neg_null_es <- mean(perm_scores[perm_scores < 0])
-#'   
-#'   ###normalize_es is the function used to normalize ES
-#'   ##ES is the enrichment score
-#'   normalize_es <- function(ES, mean_pos_null_es, mean_neg_null_es) {
-#'     s <- sign(ES)
-#'     m <- numeric(length(ES))
-#'     m[s == 1] <- mean_pos_null_es[s == 1]
-#'     m[s == -1] <- mean_neg_null_es[s == -1]
-#'     ES / m
-#'   }
-#'   
-#'   ###normalized_es is the normalized ES
-#'   normalized_es <-
-#'     normalize_es(observed_score, mean_pos_null_es, mean_neg_null_es)
-#'   
-#'   perm_scores = normalize_es(
-#'     ES = observed_score,
-#'     mean_pos_null_es = mean_pos_null_es,
-#'     mean_neg_null_es = mean_neg_null_es
-#'   )
-#'   
-#'   if (verbose) {
-#'     message("calculating p values...")
-#'   }
-#'   
-#'   ###get the p value of ES
-#'   if (is.na(normalized_es)) {
-#'     p_value = NA
-#'   }
-#'   
-#'   if (normalized_es >= 0) {
-#'     (sum(perm_scores[i, ] >= normalized_es[i]) + 1) / (sum(perm_scores[i,] >= 0) + 1)
-#'   }
-#'   
-#'   p_values <- sapply(seq_along(observed_score), function(i) {
-#'     if (is.na(normalized_es[i])) {
-#'       NA
-#'     } else if (normalized_es[i] >= 0) {
-#'       (sum(perm_scores[i, ] >= normalized_es[i]) + 1) / (sum(perm_scores[i,] >= 0) + 1)
-#'     } else {
-#'       # normalized_es[i] < 0
-#'       (sum(perm_scores[i, ] <= normalized_es[i]) + 1) / (sum(perm_scores[i,] < 0) +
-#'                                                            1)
+#'   perm_scores <- BiocParallel::bplapply(1:perm_num, function(i) {
+#'     if (seed) {
+#'       set.seed(seeds[i])
 #'     }
 #'     
+#'     perm_msea_es2(
+#'       feature_table = feature_table,
+#'       metabolite_set = metabolite_set,
+#'       exponent = exponent
+#'     )
 #'   })
 #'   
 #'   
+#'   perm_scores <- do.call(what = "cbind",
+#'                          args = perm_scores)
+#'   
+#'   rownames(perm_scores) <- names(metabolite_set)
+#'   
+#'   pos.m <- apply(perm_scores, 1, function(x)
+#'     mean(x[x >= 0]))
+#'   
+#'   neg.m <- apply(perm_scores, 1, function(x)
+#'     abs(mean(x[x < 0])))
+#'   
+#'   normalize_es <- function(ES, pos.m, neg.m) {
+#'     s <- sign(ES)
+#'     m <- numeric(length(ES))
+#'     m[s == 1] <- pos.m[s == 1]
+#'     m[s == -1] <- neg.m[s == -1]
+#'     ES / m
+#'   }
+#'   
+#'   NES <- normalize_es(observed_score, pos.m, neg.m)
+#'   
+#'   perm_scores <-
+#'     apply(perm_scores,
+#'           2,
+#'           normalize_es,
+#'           pos.m = pos.m,
+#'           neg.m = neg.m)
+#'   
+#'   if (class(perm_scores) == "numeric") {
+#'     perm_scores <- matrix(perm_scores, nrow = 1)
+#'     rownames(perm_scores) <- names(metabolite_set)
+#'   }
+#'   
+#'   if (verbose)
+#'     message("calculating p values...")
+#'   
 #'   p_values <- sapply(seq_along(observed_score), function(i) {
-#'     if (is.na(normalized_es[i])) {
+#'     if (is.na(NES[i])) {
 #'       NA
-#'     } else if (normalized_es[i] >= 0) {
-#'       (sum(perm_scores[i, ] >= normalized_es[i]) + 1) / (sum(perm_scores[i,] >= 0) + 1)
+#'     } else if (NES[i] >= 0) {
+#'       (sum(perm_scores[i, ] >= NES[i]) + 1) / (sum(perm_scores[i,] >= 0) + 1)
 #'     } else {
-#'       # normalized_es[i] < 0
-#'       (sum(perm_scores[i, ] <= normalized_es[i]) + 1) / (sum(perm_scores[i,] < 0) +
-#'                                                            1)
+#'       # NES[i] < 0
+#'       (sum(perm_scores[i, ] <= NES[i]) + 1) / (sum(perm_scores[i,] < 0) +
+#'                                                  1)
 #'     }
 #'     
 #'   })
@@ -208,7 +246,7 @@
 #'     Description = description,
 #'     setSize = sapply(metabolite_set, length),
 #'     enrichmentScore = observed_score,
-#'     normalized_es = normalized_es,
+#'     NES = NES,
 #'     pvalue = p_values,
 #'     p_adjust = p_adjust,
 #'     qvalues = qvalues,
@@ -275,7 +313,7 @@
 #' ##'
 #' ##' @docType class
 #' ##' @slot result MSEA anaysis result.
-#' ##' @slot metaboliteSets metaboliteSets
+#' ##' @slot geneSets geneSets
 #' ##' @slot feature_list order rank feature_list
 #' ##' @slot permScores permutation scores
 #' ##' @slot params parameters
@@ -330,19 +368,16 @@
 #' 
 #' 
 #' 
-#' ###get get the msea score for one metabolite set
+#' 
 #' get_msea_score2 <- function(feature_table,
 #'                             metabolite_set,
 #'                             exponent = 1,
 #'                             fortify = FALSE) {
 #'   ###################################################################
-#'   ##    feature_table                                              ##
+#'   ##    feature_list                                               ##
 #'   ##                                                               ##
-#'   ## 1. Rank order the N metabolites (peaks) in D                  ##
-#'   ## to form L = { m_1, ... , m_N}                                 ##
-#'   ##    according to the condition (fold change, correlation       ##
-#'   ##    and son on),
-#'   ##    r(g_j)=r_j,                  ##
+#'   ## 1. Rank order the N genes in D to form L = { g_1, ... , g_N}  ##
+#'   ##    according to the correlation, r(g_j)=r_j,                  ##
 #'   ##    of their expression profiles with C.                       ##
 #'   ##                                                               ##
 #'   ###################################################################
@@ -353,58 +388,51 @@
 #'   ## An exponent p to control the weight of the step.              ##
 #'   ##   When p = 0, Enrichment Score ( ES(S) ) reduces to           ##
 #'   ##   the standard Kolmogorov-Smirnov statistic.                  ##
-#'   ##   When p = 1, we are weighting the metabolites in S           ##
+#'   ##   When p = 1, we are weighting the genes in S                 ##
 #'   ##   by their correlation with C normalized                      ##
-#'   ##   by the sum of the correlations over all of the              ##
-#'   ##   metabolites in S.                                           ##
+#'   ##   by the sum of the correlations over all of the genes in S.  ##
 #'   ##                                                               ##
 #'   ###################################################################
 #'   
-#'   ## metabolites defined in metabolite_set should appear in feature_table.
+#'   ## genes defined in metabolite_set should appear in feature_table.
 #'   metabolite_set <- intersect(metabolite_set, feature_table$Lab.ID)
 #'   
-#'   ##num_feature_list is the length of feature_table
+#'   ##N the length of feature_list
 #'   num_feature_list <- nrow(feature_table)
+#'   # num_feature_list <-
+#'   # length(unique(feature_table$Lab.ID))
 #'   
-#'   ##num_metabolite_list is the length of unique metabolites in feature_table
-#'   num_metabolite_list <- length(unique(feature_table$Lab.ID))
-#'   
-#'   ##num_metabolite_set is the length of feature set
+#'   ##num_metabolite_set the length of feature set
 #'   num_metabolite_set <- length(metabolite_set)
 #'   
-#'   ###p_hit and p_miss are the vector to record if the metabolites in feature_table
-#'   ###are in metabolite_set or not
-#'   p_hit <- p_miss <- numeric(num_feature_list)
-#'   
-#'   ###hits is a logical vector indicates if the metabolites ID
-#'   ### in feature set or not
+#'   Phit <- Pmiss <- numeric(num_feature_list)
 #'   hits <- feature_table$Lab.ID %in% metabolite_set ## logical
 #'   
-#'   p_hit[hits] <-
-#'     (abs(feature_table$condition[hits])) ^ exponent
+#'   Phit[hits] <-
+#'     (abs(feature_table$condition[hits]) * (feature_table$score[hits] / 100)) ^ exponent
 #'   #   score <- feature_table$score[hits]
 #'   #   compound_class <- feature_table$compound_class[hits]
 #'   #
 #'   #   temp_data <- data.frame(
 #'   #     index = 1:sum(hits),
-#'   #     p_hit = p_hit[hits],
+#'   #     phit = Phit[hits],
 #'   #     feature_table[hits, ],
 #'   #     stringsAsFactors = FALSE
 #'   #   )
 #'   #
 #'   # idx <- 17
 #'   #   temp_data %>%
-#'   #     ggplot(aes(index, p_hit)) +
+#'   #     ggplot(aes(index, phit)) +
 #'   #     geom_point() +
 #'   #     geom_point(
-#'   #       aes(x = index, y = p_hit, color = compound_class),
+#'   #       aes(x = index, y = phit, color = compound_class),
 #'   #       show.legend = FALSE,
 #'   #       data = temp_data %>% filter(Lab.ID == unique(Lab.ID)[idx])
 #'   #     ) +
 #'   #     ggrepel::geom_label_repel(
 #'   #       aes(
 #'   #         x = index,
-#'   #         y = p_hit,
+#'   #         y = phit,
 #'   #         label = paste(compound_class, score, Adduct, isotope, sep = ":"),
 #'   #         color = compound_class
 #'   #       ),
@@ -416,98 +444,77 @@
 #'   
 #'   # write.csv(feature_table[hits,], "test.csv", row.names = FALSE)
 #'   
-#'   ###NR is the normalized runing enrichment score
-#'   NR <- sum(p_hit)
-#'   p_hit <- cumsum(p_hit / NR)
+#'   NR <- sum(Phit)
+#'   Phit <- cumsum(Phit / NR)
 #'   
-#'   p_miss[!hits] <- 1 / (num_feature_list - num_metabolite_set)
-#'   p_miss <- cumsum(p_miss)
+#'   Pmiss[!hits] <- 1 / (num_feature_list - num_metabolite_set)
+#'   Pmiss <- cumsum(Pmiss)
 #'   
-#'   runing_es <- p_hit - p_miss
+#'   runningES <- Phit - Pmiss
 #'   
-#'   # data.frame(index = 1:length(p_hit),
-#'   #            p_hit, p_miss, runing_es,
+#'   # data.frame(index = 1:length(Phit),
+#'   #            Phit, Pmiss, runningES,
 #'   #            stringsAsFactors = FALSE) %>%
 #'   #   tidyr::pivot_longer(cols = -index, names_to = "class", values_to = "value") %>%
 #'   #   ggplot(aes(x = index, y = value, color = class)) +
 #'   #   geom_point()
 #'   
-#'   ## enrichment (ES) is the maximum deviation from zero of p_hit-p_miss
-#'   max_es <- max(runing_es)
-#'   min_es <- min(runing_es)
+#'   ## ES is the maximum deviation from zero of Phit-Pmiss
+#'   max.ES <- max(runningES)
+#'   min.ES <- min(runningES)
 #'   
-#'   if (abs(max_es) > abs(min_es)) {
-#'     ES <- max_es
+#'   if (abs(max.ES) > abs(min.ES)) {
+#'     ES <- max.ES
 #'   } else {
-#'     ES <- min_es
+#'     ES <- min.ES
 #'   }
 #'   
-#'   ####in the df data frame,x is the index of all the metabolites (peaks) in the
-#'   ####feature table. running_score is the running score for each metabolites (peaks)
-#'   ####in feature table. position indicates if the metabolites or peaks are in
-#'   ####metabolite set or not.
 #'   df <- data.frame(
-#'     x = seq_along(runing_es),
-#'     running_score = runing_es,
+#'     x = seq_along(runningES),
+#'     runningScore = runningES,
 #'     position = as.integer(hits)
 #'   )
 #'   
 #'   # df %>%
-#'   #   ggplot(aes(x, running_score)) +
+#'   #   ggplot(aes(x, runningScore)) +
 #'   #   geom_point(aes(color = as.character(position)))
 #'   
-#'   ###fortify (加强,增强)
 #'   if (fortify == TRUE) {
 #'     return(df)
 #'   }
 #'   
-#'   ###if set fortify as TRUE, add the metabolites ID to each metabolite (peak)
-#'   df$metabolite = feature_table$Lab.ID
-#'   res <- list(ES = ES, runing_es = df)
+#'   df$gene = feature_table$Lab.ID
+#'   res <- list(ES = ES, runningES = df)
+#'   return(res)
+#' }
+#' 
+#' 
+#' 
+#' perm_feature_table <- function(feature_table) {
+#'   perm.idx <- sample.int(nrow(feature_table))
+#'   perm_feature_table <- feature_table
+#'   perm_feature_table$Lab.ID <- perm_feature_table$Lab.ID[perm.idx]
+#'   return(perm_feature_table)
+#' }
+#' 
+#' 
+#' perm_msea_es2 <- function(feature_table,
+#'                           metabolite_set,
+#'                           exponent = 1) {
+#'   feature_table <- perm_feature_table(feature_table)
+#'   res <- sapply(1:length(metabolite_set), function(i)
+#'     get_msea_score2(
+#'       feature_table = feature_table,
+#'       metabolite_set = metabolite_set[[i]],
+#'       exponent = exponent
+#'     )$ES)
 #'   return(res)
 #' }
 #' 
 #' 
 #' 
 #' 
-#' #' @title perm_msea_es2
-#' #' @description Permutation to get the null distribution of enrichment score
-#' #' @author Xiaotao Shen
-#' #' \email{shenxt@@stanford.edu}
-#' #' @param feature_table Feature table ordered by condition.
-#' #' @param metabolite_set Metabolite set.
 #' 
-#' perm_msea_es2 <- function(feature_table,
-#'                           metabolite_set,
-#'                           exponent = 1) {
-#'   permutated_feature_table <- perm_feature_table(feature_table)
-#'   res =
-#'     get_msea_score2(
-#'       feature_table = permutated_feature_table,
-#'       metabolite_set = metabolite_set,
-#'       exponent = exponent,
-#'       fortify = FALSE
-#'     )
-#'   return(res$ES)
-#' }
-#' 
-#' #' @title perm_feature_table
-#' #' @description This function is used randomly order the feature table. We just randomly order the
-#' #' Lab.ID for feature_table.
-#' #' @author Xiaotao Shen
-#' #' \email{shenxt@@stanford.edu}
-#' #' @param feature_table Feature table ordered by condition.
-#' 
-#' perm_feature_table <- function(feature_table) {
-#'   perm.idx <- sample.int(nrow(feature_table))
-#'   permutated_feature_table <- feature_table
-#'   permutated_feature_table$condition <-
-#'     permutated_feature_table$condition[perm.idx]
-#'   permutated_feature_table =
-#'     permutated_feature_table %>%
-#'     dplyr::arrange(dplyr::desc(condition))
-#'   return(permutated_feature_table)
-#' }
 #' 
 #' 
 #' 
@@ -536,62 +543,62 @@
 #' ###----------------------------------------------------------------------------
 #' get_leading_edge <- function(observed_info) {
 #'   core_enrichment <- lapply(observed_info, function(x) {
-#'     runing_es <- x$runing_es
-#'     runing_es <- runing_es[runing_es$position == 1, ]
+#'     runningES <- x$runningES
+#'     runningES <- runningES[runningES$position == 1, ]
 #'     ES <- x$ES
 #'     if (ES >= 0) {
-#'       i <- which.max(runing_es$running_score)
-#'       leading_metabolite <- runing_es$metabolite[1:i]
+#'       i <- which.max(runningES$runningScore)
+#'       leading_gene <- runningES$gene[1:i]
 #'     } else {
-#'       i <- which.min(runing_es$running_score)
-#'       leading_metabolite <- runing_es$metabolite[-c(1:(i - 1))]
+#'       i <- which.min(runningES$runningScore)
+#'       leading_gene <- runningES$gene[-c(1:(i - 1))]
 #'     }
-#'     return(leading_metabolite)
+#'     return(leading_gene)
 #'   })
 #'   
 #'   rank <- sapply(observed_info, function(x) {
-#'     runing_es <- x$runing_es
+#'     runningES <- x$runningES
 #'     ES <- x$ES
 #'     if (ES >= 0) {
-#'       rr <- which.max(runing_es$running_score)
+#'       rr <- which.max(runningES$runningScore)
 #'     } else {
-#'       i <- which.min(runing_es$running_score)
-#'       rr <- nrow(runing_es) - i + 1
+#'       i <- which.min(runningES$runningScore)
+#'       rr <- nrow(runningES) - i + 1
 #'     }
 #'     return(rr)
 #'   })
 #'   
 #'   tags <- sapply(observed_info, function(x) {
-#'     runing_es <- x$runing_es
-#'     runing_es <- runing_es[runing_es$position == 1, ]
+#'     runningES <- x$runningES
+#'     runningES <- runningES[runningES$position == 1, ]
 #'     ES <- x$ES
 #'     if (ES >= 0) {
-#'       i <- which.max(runing_es$running_score)
-#'       res <- i / nrow(runing_es)
+#'       i <- which.max(runningES$runningScore)
+#'       res <- i / nrow(runningES)
 #'     } else {
-#'       i <- which.min(runing_es$running_score)
-#'       res <- (nrow(runing_es) - i + 1) / nrow(runing_es)
+#'       i <- which.min(runningES$runningScore)
+#'       res <- (nrow(runningES) - i + 1) / nrow(runningES)
 #'     }
 #'     return(res)
 #'   })
 #'   
 #'   ll <- sapply(observed_info, function(x) {
-#'     runing_es <- x$runing_es
+#'     runningES <- x$runningES
 #'     ES <- x$ES
 #'     if (ES >= 0) {
-#'       i <- which.max(runing_es$running_score)
-#'       res <- i / nrow(runing_es)
+#'       i <- which.max(runningES$runningScore)
+#'       res <- i / nrow(runningES)
 #'     } else {
-#'       i <- which.min(runing_es$running_score)
-#'       res <- (nrow(runing_es) - i + 1) / nrow(runing_es)
+#'       i <- which.min(runningES$runningScore)
+#'       res <- (nrow(runningES) - i + 1) / nrow(runningES)
 #'     }
 #'     return(res)
 #'   })
 #'   
-#'   N <- nrow(observed_info[[1]]$runing_es)
+#'   N <- nrow(observed_info[[1]]$runningES)
 #'   setSize <-
 #'     sapply(observed_info, function(x)
-#'       sum(x$runing_es$position))
+#'       sum(x$runningES$position))
 #'   signal <- tags * (1 - ll) * (N / (N - setSize))
 #'   
 #'   tags <- paste0(round(tags * 100), "%")
@@ -650,17 +657,17 @@
 #' ##' @title msea_plot
 #' ##' @rdname mseaplot
 #' ##' @param x object of msea result
-#' ##' @param metaboliteSetID metaboliteSet ID
-#' ##' @param by one of "running_score" or "position"
+#' ##' @param geneSetID geneSet ID
+#' ##' @param by one of "runningScore" or "position"
 #' ##' @param title plot title
 #' ##' @param ... additional parameters
 #' ##' @return ggplot2 object
 #' ##' @export
 #' ##' @examples
 #' ##' library(DOSE)
-#' ##' data(metaboliteList)
-#' ##' x <- gseDO(metaboliteList)
-#' ##' mseaplot(x, metaboliteSetID=1)
+#' ##' data(geneList)
+#' ##' x <- gseDO(geneList)
+#' ##' mseaplot(x, geneSetID=1)
 #' setGeneric(name = "msea_plot",
 #'            function(x,
 #'                     metabolite_set_idx = 1,
@@ -733,27 +740,25 @@
 #'     if (is.null(x)) {
 #'       return(NULL)
 #'     }
-#'     by <- match.arg(by, c("running_score", "preranked", "all"))
+#'     by <- match.arg(by, c("runningScore", "preranked", "all"))
 #'     gs_data <- get_gs_info(x, metabolite_set_idx)
 #'     
 #'     p <- ggplot(gs_data, aes_(x = ~ x)) +
 #'       theme_dose() +
 #'       xlab("Position in the ranked list of features")
 #'     
-#'     if (by == "running_score" || by == "all") {
+#'     if (by == "runningScore" || by == "all") {
 #'       p.res <-
 #'         p + geom_linerange(aes_(ymin =  ~ ymin, ymax =  ~ ymax), color = color)
 #'       p.res <-
-#'         p.res + geom_line(aes_(y = ~ running_score),
-#'                           color = color.line,
-#'                           size =
+#'         p.res + geom_line(aes_(y = ~ runningScore), color = color.line, size =
 #'                             1)
 #'       enrichmentScore <-
 #'         x@result[metabolite_set_idx, "enrichmentScore"]
 #'       
 #'       es.df <-
 #'         data.frame(es = which.min(abs(
-#'           p$data$running_score - enrichmentScore
+#'           p$data$runningScore - enrichmentScore
 #'         )))
 #'       
 #'       p.res <-
@@ -782,7 +787,7 @@
 #'       p.pos <-
 #'         p.pos + ylab("Ranked list metric") + xlim(0, length(p$data$feature_list))
 #'     }
-#'     if (by == "running_score")
+#'     if (by == "runningScore")
 #'       return(p.res + ggtitle(title))
 #'     if (by == "preranked")
 #'       return(p.pos + ggtitle(title))
@@ -805,11 +810,11 @@
 #'   metabolite_set <- object@metabolite_set[[metabolite_set_idx]]
 #'   exponent <- object@params[["exponent"]]
 #'   df <-
-#'     get_msea_score(feature_list, metabolite_set, exponent, fortify = TRUE)
+#'     get_msea_score2(feature_list, metabolite_set, exponent, fortify = TRUE)
 #'   df$ymin = 0
 #'   df$ymax = 0
 #'   pos <- df$position == 1
-#'   h <- diff(range(df$running_score)) / 20
+#'   h <- diff(range(df$runningScore)) / 20
 #'   df$ymin[pos] <- -h
 #'   df$ymax[pos] <- h
 #'   df$feature_list <- feature_list

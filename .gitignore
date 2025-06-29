@@ -49,11 +49,13 @@ example/*
 other_files/
 
 demo_data/
+demo_code/
 summary/
 manuscript/
 docs/
 
 demo_data
+demo_code
 summary
 manuscript
 docs

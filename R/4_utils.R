@@ -86,7 +86,3 @@ style_grey <- function(level, ...) {
   crayon::style(paste0(...),
                 crayon::make_style(grDevices::grey(level), grey = TRUE))
 }
-
-
-
-

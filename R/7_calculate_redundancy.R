@@ -1,7 +1,7 @@
 #' @title calculate_redundancy
 #' @description calculate_redundancy
 #' @author Xiaotao Shen
-#' \email{shenxt1990@@outlook.com}
+#' \email{xiaotao.shen@@outlook.com}
 #' @param annotation_table annotation table
 #' @importFrom data.table rbindlist .N
 #' @return redundancy
@@ -31,6 +31,62 @@ calculate_redundancy <-
       pull(N) %>%
       mean()
     
-    c(redundancy1 = redundancy1,
-      redundancy2 = redundancy2)
+    c(redundancy1 = redundancy1, redundancy2 = redundancy2)
+  }
+
+
+
+remove_redundancy <-
+  function(annotation_table) {
+    ##for one compound, if one compound class with score > 100, then remove the
+    ##compound class with score <= 20
+    
+    redundancy_diff = c(-1, -1)
+    
+    while (any(redundancy_diff < 0)) {
+      # cat("i", " ")
+      before_redundancy =
+        calculate_redundance(annotation_table = annotation_table)
+      
+      annotation_table <-
+        annotation_table %>%
+        dplyr::group_by(Lab.ID) %>%
+        dplyr::filter(if (any(score > 100)) {
+          score > 20
+        } else{
+          score > 0
+        }) %>%
+        dplyr::ungroup()
+      
+      ##for one peak, if it has a annotation with score > 100, then remove other
+      ##annotations with score <= 20
+      annotation_table <-
+        annotation_table %>%
+        dplyr::group_by(name) %>%
+        dplyr::filter(if (any(score > 100)) {
+          score > 20
+        } else{
+          score > 0
+        }) %>%
+        dplyr::ungroup()
+      
+      
+      ###re-calculated confidence score for each compound class.
+      annotation_table =
+        annotation_table %>%
+        plyr::dlply(.variables = .(compound_class)) %>%
+        purrr::map(function(x) {
+          score <- score_mfc(x)
+          x$score = score
+          x
+        }) %>%
+        dplyr::bind_rows()
+      
+      after_redundancy =
+        calculate_redundance(annotation_table = annotation_table)
+      
+      redundancy_diff = after_redundancy - before_redundancy
+    }
+    
+    annotation_table
   }

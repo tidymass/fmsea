@@ -31,15 +31,15 @@
 # rm(list = ls())
 # source("R/annotate_isotope.R")
 # source("R/utils.R")
-# 
+#
 # setwd("demo_data/denmark_project/metabolome/peaks/")
-# 
+#
 # library(tidyverse)
-# 
+#
 # ####load the correlation with GA
 # load("p_cor")
 # load("variable_info")
-# 
+#
 # ##variable_info is the annotation information for
 # ##each peak according to MS2
 # feature_table <-
@@ -48,9 +48,9 @@
 #                                      TRUE ~ "negative")) %>%
 #   dplyr::select(-p) %>%
 #   dplyr::rename(condition = cor)
-# 
+#
 # head(feature_table)
-# 
+#
 # load("keggMS1database")
 # metabolite_database = keggMS1database
 
@@ -144,8 +144,7 @@ annotate_feature_table <-
     }
     
     annotation_table =
-      rbind(annotation_table_pos,
-            annotation_table_neg) %>%
+      rbind(annotation_table_pos, annotation_table_neg) %>%
       as.data.frame()
     
     ###this should be remove when packged
@@ -354,8 +353,7 @@ annotate_feature_table <-
     rm(list = c("isotope_pos", "isotope_neg"))
     
     annotation_table =
-      rbind(annotation_table_pos,
-            annotation_table_neg) %>%
+      rbind(annotation_table_pos, annotation_table_neg) %>%
       dplyr::arrange(Lab.ID, rt)
     
     ####combine peaks as group according to compound and rt
@@ -388,7 +386,7 @@ annotate_feature_table <-
             purrr::map(function(y) {
               z =
                 x[x$compound_class == y, , drop = FALSE]
-              score <- score_peak_group(z)
+              score <- score_mfcp(z)
               z = data.frame(z, score, stringsAsFactors = FALSE)
               z
             }) %>%

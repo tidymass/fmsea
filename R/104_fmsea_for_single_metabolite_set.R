@@ -157,7 +157,7 @@
 #'       seeds <- sample.int(perm_num)
 #'     }
 #'     
-#'     if (tinyTools::get_os() == "windows") {
+#'     if (masstools::get_os() == "windows") {
 #'       bpparam =
 #'         BiocParallel::SnowParam(workers = threads,
 #'                                 progressbar = TRUE)

@@ -91,7 +91,7 @@
 #'   #             plyr::dlply(.variables = .(fc_class)) %>%
 #'   #             purrr::map(
 #'   #               .f = function(y) {
-#'   #                 score_peak_group(peak_group = y)
+#'   #                 score_mfc(mfc = y)
 #'   #               }
 #'   #             ) %>%
 #'   #             unlist()

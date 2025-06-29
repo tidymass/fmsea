@@ -1,214 +1,3 @@
-#' @title group peaks according to RT
-#' @description group peaks according to RT
-#' @author Xiaotao Shen
-#' \email{shenxt@@stanford.edu}
-#' @param rt rt
-#' @param rt.tol rt.tol
-#' @export
-## group peaks according to RT
-group_peaks_rt <- function(rt, rt.tol = 10) {
-  rt_class <-
-    lapply(rt, function(x) {
-      which(rt >= x & rt < x + rt.tol)
-    })
-  
-  rt_class <-
-    lapply(seq_along(rt_class)[-1], function(i) {
-      setdiff(rt_class[[i]], unlist(rt_class[1:(i - 1)]) %>% unique())
-    }) %>%
-    `c`(rt_class[1], .)
-  
-  rt_class <-
-    rt_class[which(lapply(rt_class, length) != 0)]
-  
-  names(rt_class) <- seq_along(rt_class)
-  
-  rt_class <-
-    purrr::map2(
-      .x = rt_class,
-      .y = names(rt_class),
-      .f = function(x, y) {
-        data.frame(rt = rt[x],
-                   class = y,
-                   stringsAsFactors = FALSE)
-      }
-    ) %>%
-    do.call(rbind, .)
-  rownames(rt_class) <- NULL
-  return(rt_class)
-}
-
-
-
-
-
-
-
-
-
-###positive
-### [M+H] 50
-### [M+H] isotope 20
-### other adduct 20
-### other adduct 10
-
-###negative
-### [M-H] 50
-### [M-H] isotope 20
-### other adduct 20
-### other adduct 10
-
-
-#' @title score_peak_group
-#' @description score_peak_group
-#' @author Xiaotao Shen
-#' \email{shenxt@@stanford.edu}
-#' @param peak_group peak_group
-#' @export
-score_peak_group <- function(peak_group) {
-  score <- 0
-  
-  ##This should be optimized in the future
-  
-  ###if positive adduct are +H, score add 50
-  if (any(peak_group$Adduct == "(M+H)+")) {
-    score <- score + 50
-  }
-  
-  if (any(peak_group$Adduct == "(M+H)+" &
-          peak_group$isotope != "[M]")) {
-    score <- score + 20
-  }
-  
-  if (any(peak_group$polarity == "positive" &
-          peak_group$Adduct != "(M+H)+")) {
-    score <- score + 20
-  }
-  
-  if (any(
-    peak_group$polarity == "positive" & peak_group$Adduct != "(M+H)+" &
-    peak_group$isotope != "[M]"
-  )) {
-    score <- score + 10
-  }
-  
-  if (any(peak_group$Adduct == "(M-H)-")) {
-    score <- score + 50
-  }
-  
-  if (any(peak_group$Adduct == "(M-H)-" &
-          peak_group$isotope != "[M]")) {
-    score <- score + 20
-  }
-  
-  if (any(peak_group$polarity == "negative" &
-          peak_group$Adduct != "(M-H)-")) {
-    score <- score + 20
-  }
-  
-  
-  if (any(
-    peak_group$polarity == "negative" & peak_group$Adduct != "(M-H)-" &
-    peak_group$isotope != "[M]"
-  )) {
-    score <- score + 10
-  }
-  
-  return(score)
-}
-
-
-#' @title calculate_redundancy
-#' @description calculate_redundancy
-#' @author Xiaotao Shen
-#' \email{shenxt@@stanford.edu}
-#' @param annotation_table annotation table
-#' @export
-
-calculate_redundance <- function(annotation_table) {
-  annotation_table <-
-    dplyr::bind_rows(annotation_table)
-  
-  ##redundancy1 means one compound contains how many compound class
-  redundancy1 <-
-    annotation_table %>%
-    dplyr::group_by(Lab.ID) %>%
-    dplyr::distinct(compound_class) %>%
-    dplyr::summarise(n = dplyr::n()) %>%
-    dplyr::pull(n) %>%
-    mean()
-  
-  ##redundancy2 means one peak matches how many compound
-  redundancy2 <-
-    annotation_table %>%
-    dplyr::group_by(name) %>%
-    dplyr::summarise(n = dplyr::n()) %>%
-    dplyr::pull(n) %>%
-    mean()
-  c(redundancy1, redundancy2)
-}
-
-
-
-
-remove_redundancy <-
-  function(annotation_table) {
-    ##for one compound, if one compound class with score > 100, then remove the
-    ##compound class with score <= 20
-    
-    redundancy_diff = c(-1, -1)
-    
-    while (any(redundancy_diff < 0)) {
-      # cat("i", " ")
-      before_redundancy =
-        calculate_redundance(annotation_table = annotation_table)
-      
-      annotation_table <-
-        annotation_table %>%
-        dplyr::group_by(Lab.ID) %>%
-        dplyr::filter(if (any(score > 100)) {
-          score > 20
-        } else{
-          score > 0
-        }) %>%
-        dplyr::ungroup()
-      
-      ##for one peak, if it has a annotation with score > 100, then remove other
-      ##annotations with score <= 20
-      annotation_table <-
-        annotation_table %>%
-        dplyr::group_by(name) %>%
-        dplyr::filter(if (any(score > 100)) {
-          score > 20
-        } else{
-          score > 0
-        }) %>%
-        dplyr::ungroup()
-      
-      
-      ###re-calculated confidence score for each compound class.
-      annotation_table =
-        annotation_table %>%
-        plyr::dlply(.variables = .(compound_class)) %>%
-        purrr::map(function(x) {
-          score <- score_peak_group(x)
-          x$score = score
-          x
-        }) %>%
-        dplyr::bind_rows()
-      
-      after_redundancy =
-        calculate_redundance(annotation_table = annotation_table)
-      
-      redundancy_diff = after_redundancy - before_redundancy
-    }
-    
-    annotation_table
-  }
-
-
-
-
 
 
 
@@ -552,7 +341,7 @@ get_msea_score <- function(annotation_table,
     position_miss <- numeric(length = number_annotation_table)
   hits <- annotation_table$Lab.ID %in% metabolite_set ## logical
   
-  position_hit[hits] <- abs(annotation_table$order[hits]) ^ exponent
+  position_hit[hits] <- abs(annotation_table$order[hits])^exponent
   NR <- sum(position_hit)
   position_hit <- cumsum(position_hit / NR)
   
@@ -609,9 +398,7 @@ perm_feature_list <- function(feature_list) {
 }
 
 
-perm_msea_es <- function(feature_list,
-                         feature_set,
-                         exponent = 1) {
+perm_msea_es <- function(feature_list, feature_set, exponent = 1) {
   feature_list <- perm_feature_list(feature_list)
   res <- sapply(1:length(feature_set), function(i)
     get_msea_score(
@@ -630,8 +417,7 @@ calculate_qvalue <- function(pvals) {
     return(numeric(0))
   
   qobj <- tryCatch(
-    qvalue::qvalue(pvals, lambda = 0.05,
-                   pi0.method = "bootstrap"),
+    qvalue::qvalue(pvals, lambda = 0.05, pi0.method = "bootstrap"),
     error = function(e)
       NULL
   )
@@ -741,22 +527,21 @@ get_leading_edge <- function(observed_info) {
 ##' @exportMethod show
 ##' @usage show(object)
 ##' @author Guangchuang Yu \url{https://guangchuangyu.github.io}
-setMethod("show", signature(object = "metPathMSEA"),
-          function (object) {
-            params <- object@params
-            cat("#\n# Gene Set Enrichment Analysis\n#\n")
-            cat("#...@feature_list", "\t")
-            str(object@feature_list)
-            cat("#...nPerm", "\t", params$perm_num, "\n")
-            cat(
-              "#...pvalues adjusted by",
-              paste0("'", params$p_adjust_method, "'"),
-              paste0("with cutoff <", params$pvalueCutoff),
-              "\n"
-            )
-            cat(paste0("#...", nrow(object@result)), "enriched terms found\n")
-            str(object@result)
-          })
+setMethod("show", signature(object = "metPathMSEA"), function (object) {
+  params <- object@params
+  cat("#\n# Gene Set Enrichment Analysis\n#\n")
+  cat("#...@feature_list", "\t")
+  str(object@feature_list)
+  cat("#...nPerm", "\t", params$perm_num, "\n")
+  cat(
+    "#...pvalues adjusted by",
+    paste0("'", params$p_adjust_method, "'"),
+    paste0("with cutoff <", params$pvalueCutoff),
+    "\n"
+  )
+  cat(paste0("#...", nrow(object@result)), "enriched terms found\n")
+  str(object@result)
+})
 
 
 
@@ -777,41 +562,39 @@ setMethod("show", signature(object = "metPathMSEA"),
 ##' data(annotation_table)
 ##' x <- gseDO(annotation_table)
 ##' mseaplot(x, geneSetID=1)
-setGeneric(name = "msea_plot",
-           function(x,
-                    feature_set_idx = 1,
-                    by = "all",
-                    title = "",
-                    color = 'black',
-                    color.line = "#8DD3C7",
-                    color.vline = "#FB8072",
-                    ...) {
-             standardGeneric("msea_plot")
-           })
+setGeneric(name = "msea_plot", function(x,
+                                        feature_set_idx = 1,
+                                        by = "all",
+                                        title = "",
+                                        color = 'black',
+                                        color.line = "#8DD3C7",
+                                        color.vline = "#FB8072",
+                                        ...) {
+  standardGeneric("msea_plot")
+})
 
 
 ##' @rdname msea_plot
 ##' @exportMethod msea_plot
-setMethod(f = "msea_plot", signature(x = "metPathMSEA"),
-          function (x,
-                    feature_set_idx = 1,
-                    by = "all",
-                    title = "",
-                    color = 'black',
-                    color.line = "#8DD3C7",
-                    color.vline = "#FB8072",
-                    ...) {
-            msea_plot.metPathMSEA(
-              x,
-              feature_set_idx = feature_set_idx,
-              by = by,
-              title = title,
-              color = color,
-              color.line = color.line,
-              color.vline = color.vline,
-              ...
-            )
-          })
+setMethod(f = "msea_plot", signature(x = "metPathMSEA"), function (x,
+                                                                   feature_set_idx = 1,
+                                                                   by = "all",
+                                                                   title = "",
+                                                                   color = 'black',
+                                                                   color.line = "#8DD3C7",
+                                                                   color.vline = "#FB8072",
+                                                                   ...) {
+  msea_plot.metPathMSEA(
+    x,
+    feature_set_idx = feature_set_idx,
+    by = by,
+    title = title,
+    color = color,
+    color.line = color.line,
+    color.vline = color.vline,
+    ...
+  )
+})
 
 ##' @rdname msea_plot
 ##' @param color color of line segments
@@ -904,8 +687,7 @@ msea_plot.metPathMSEA <-
       return(p.pos + ggtitle(title))
     
     p.pos <-
-      p.pos + xlab(NULL) + theme(axis.text.x = element_blank(),
-                                 axis.ticks.x = element_blank())
+      p.pos + xlab(NULL) + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
     p.pos <- p.pos + ggtitle(title) +
       theme(plot.title = element_text(hjust = 0.5, size = rel(2)))
     cowplot::plot_grid(p.pos, p.res, ncol = 1, align = "v")
@@ -913,8 +695,7 @@ msea_plot.metPathMSEA <-
 
 
 
-get_gs_info <- function(object,
-                        feature_set_idx = 1) {
+get_gs_info <- function(object, feature_set_idx = 1) {
   feature_list <- object@feature_list
   # if (is.numeric(feature_set_idx))
   #   feature_set_idx <- object@result[feature_set_idx, "ID"]
@@ -1058,8 +839,7 @@ calculate_qvalue <- function(pvals) {
     return(numeric(0))
   
   qobj <- tryCatch(
-    qvalue::qvalue(pvals, lambda = 0.05,
-                   pi0.method = "bootstrap"),
+    qvalue::qvalue(pvals, lambda = 0.05, pi0.method = "bootstrap"),
     error = function(e)
       NULL
   )
@@ -1169,22 +949,21 @@ get_leading_edge <- function(observed_info) {
 ##' @exportMethod show
 ##' @usage show(object)
 ##' @author Guangchuang Yu \url{https://guangchuangyu.github.io}
-setMethod("show", signature(object = "metPathMSEA"),
-          function (object) {
-            params <- object@params
-            cat("#\n# Gene Set Enrichment Analysis\n#\n")
-            cat("#...@feature_list", "\t")
-            str(object@feature_list)
-            cat("#...nPerm", "\t", params$perm_num, "\n")
-            cat(
-              "#...pvalues adjusted by",
-              paste0("'", params$p_adjust_method, "'"),
-              paste0("with cutoff <", params$pvalueCutoff),
-              "\n"
-            )
-            cat(paste0("#...", nrow(object@result)), "enriched terms found\n")
-            str(object@result)
-          })
+setMethod("show", signature(object = "metPathMSEA"), function (object) {
+  params <- object@params
+  cat("#\n# Gene Set Enrichment Analysis\n#\n")
+  cat("#...@feature_list", "\t")
+  str(object@feature_list)
+  cat("#...nPerm", "\t", params$perm_num, "\n")
+  cat(
+    "#...pvalues adjusted by",
+    paste0("'", params$p_adjust_method, "'"),
+    paste0("with cutoff <", params$pvalueCutoff),
+    "\n"
+  )
+  cat(paste0("#...", nrow(object@result)), "enriched terms found\n")
+  str(object@result)
+})
 
 
 
@@ -1205,41 +984,39 @@ setMethod("show", signature(object = "metPathMSEA"),
 ##' data(annotation_table)
 ##' x <- gseDO(annotation_table)
 ##' mseaplot(x, geneSetID=1)
-setGeneric(name = "msea_plot",
-           function(x,
-                    feature_set_idx = 1,
-                    by = "all",
-                    title = "",
-                    color = 'black',
-                    color.line = "#8DD3C7",
-                    color.vline = "#FB8072",
-                    ...) {
-             standardGeneric("msea_plot")
-           })
+setGeneric(name = "msea_plot", function(x,
+                                        feature_set_idx = 1,
+                                        by = "all",
+                                        title = "",
+                                        color = 'black',
+                                        color.line = "#8DD3C7",
+                                        color.vline = "#FB8072",
+                                        ...) {
+  standardGeneric("msea_plot")
+})
 
 
 ##' @rdname msea_plot
 ##' @exportMethod msea_plot
-setMethod(f = "msea_plot", signature(x = "metPathMSEA"),
-          function (x,
-                    feature_set_idx = 1,
-                    by = "all",
-                    title = "",
-                    color = 'black',
-                    color.line = "#8DD3C7",
-                    color.vline = "#FB8072",
-                    ...) {
-            msea_plot.metPathMSEA(
-              x,
-              feature_set_idx = feature_set_idx,
-              by = by,
-              title = title,
-              color = color,
-              color.line = color.line,
-              color.vline = color.vline,
-              ...
-            )
-          })
+setMethod(f = "msea_plot", signature(x = "metPathMSEA"), function (x,
+                                                                   feature_set_idx = 1,
+                                                                   by = "all",
+                                                                   title = "",
+                                                                   color = 'black',
+                                                                   color.line = "#8DD3C7",
+                                                                   color.vline = "#FB8072",
+                                                                   ...) {
+  msea_plot.metPathMSEA(
+    x,
+    feature_set_idx = feature_set_idx,
+    by = by,
+    title = title,
+    color = color,
+    color.line = color.line,
+    color.vline = color.vline,
+    ...
+  )
+})
 
 ##' @rdname msea_plot
 ##' @param color color of line segments
@@ -1332,8 +1109,7 @@ msea_plot.metPathMSEA <-
       return(p.pos + ggtitle(title))
     
     p.pos <-
-      p.pos + xlab(NULL) + theme(axis.text.x = element_blank(),
-                                 axis.ticks.x = element_blank())
+      p.pos + xlab(NULL) + theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
     p.pos <- p.pos + ggtitle(title) +
       theme(plot.title = element_text(hjust = 0.5, size = rel(2)))
     cowplot::plot_grid(p.pos, p.res, ncol = 1, align = "v")
@@ -1341,8 +1117,7 @@ msea_plot.metPathMSEA <-
 
 
 
-get_gs_info <- function(object,
-                        feature_set_idx = 1) {
+get_gs_info <- function(object, feature_set_idx = 1) {
   feature_list <- object@feature_list
   # if (is.numeric(feature_set_idx))
   #   feature_set_idx <- object@result[feature_set_idx, "ID"]

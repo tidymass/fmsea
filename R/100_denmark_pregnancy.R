@@ -9,7 +9,7 @@ library(massdataset)
 library(metid)
 library(metpath)
 
-masstools::setwd_project()
+setwd(masstools::get_project_wd())
 setwd("demo_data/denmark_project/metabolome/peaks/")
 
 load("expression_data")

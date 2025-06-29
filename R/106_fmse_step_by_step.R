@@ -1,15 +1,12 @@
-####20220308
-
 #to avoid source
 no_source()
-
 setwd(r4projects::get_project_wd())
-rm(list = ls())
-source("R/annotate_isotope.R")
-source("R/utils.R")
+source("R/8_annotate_feature_table.R")
+source("R/4_utils.R")
+source("R/utilities.R")
 
 setwd("demo_data/denmark_project/metabolome/peaks/")
-
+rm(list = ls())
 library(tidyverse)
 
 ####load the correlation with GA
@@ -18,20 +15,21 @@ load("variable_info")
 
 ##variable_info is the annotation information for
 ##each peak according to MS2
-feature_table <-
+
+feature_list <-
   data.frame(variable_info[, c(1:3)], p_cor[, -1], stringsAsFactors = FALSE) %>%
   dplyr::mutate(polarity = case_when(stringr::str_detect(name, "POS") ~ "positive",
                                      TRUE ~ "negative")) %>%
   dplyr::select(-p) %>%
   dplyr::rename(condition = cor)
 
-head(feature_table)
+head(feature_list)
+
 
 ###feature is the import feature list for fMSEA, the first column is the
 ###name of the peak, second column is the mass to charge ratio, third column
 ###is the retention time of feature, condition is the fold change, correlation
 ###that sort from high to low, polarity is the positive or negative mode.
-
 
 #######Step 1
 ###-----------------------------------------------------------------------------
@@ -41,11 +39,11 @@ ms1.match.ppm = 15
 rt.match.tol = 5
 
 ms1_data_pos <-
-  feature_table %>%
+  feature_list %>%
   dplyr::filter(polarity == "positive")
 
 ms1_data_neg <-
-  feature_table %>%
+  feature_list %>%
   dplyr::filter(polarity == "negative")
 
 dim(ms1_data_pos)
@@ -138,8 +136,7 @@ annotation_table_neg =
 library(future)
 library(furrr)
 future::plan(multisession, workers = 8)
-library(tictoc)
-# tic()
+
 system.time(isotope_pos <-
               furrr::future_map(
                 .x = as.data.frame(t(annotation_table_pos)),
@@ -250,7 +247,7 @@ system.time(isotope_neg <-
                     return(NULL)
                   }
                   
-                  if (is.null(temp_iso)) {
+                  if(is.null(temp_iso)){
                     return(NULL)
                   }
                   
@@ -258,14 +255,9 @@ system.time(isotope_neg <-
                     cbind(ms1_data_neg[temp_iso$peakIndex, ], temp_iso) %>%
                     dplyr::select(-c(peakIndex))
                   
-                  colnames(temp_iso) <- c("name",
-                                          "mz",
-                                          "rt",
-                                          "condition",
-                                          "polarity",
-                                          "mz.error",
-                                          "isotope",
-                                          "RT.error")
+                  colnames(temp_iso) <- c("name", "mz", "rt",
+                                          "condition", "polarity",
+                                          "mz.error", "isotope", "RT.error")
                   
                   x <- matrix(x, nrow = 1) %>% as.data.frame()
                   colnames(x) <- colnames(annotation_table_neg)
@@ -281,9 +273,9 @@ system.time(isotope_neg <-
                   temp_iso$Database <- x$Database
                   
                   temp_iso$mz.match.score <-
-                    (ms1.match.ppm - temp_iso$mz.error) / ms1.match.ppm
+                    (ms1.match.ppm - temp_iso$mz.error)/ms1.match.ppm
                   temp_iso$RT.match.score <-
-                    (rt.match.tol - temp_iso$RT.error) / rt.match.tol
+                    (rt.match.tol - temp_iso$RT.error)/rt.match.tol
                   temp_iso %>%
                     dplyr::select(colnames(x))
                 },
@@ -306,6 +298,7 @@ annotation_table =
   rbind(annotation_table_pos,
         annotation_table_neg) %>%
   dplyr::arrange(Lab.ID, rt)
+
 
 ####combine peaks as group according to compound and rt
 library(plyr)
@@ -335,72 +328,62 @@ annotation_table <-
         purrr::map(function(y) {
           z =
             x[x$compound_class == y, , drop = FALSE]
-          score <- score_peak_group(z)
+          score <- score_mfc(z)
           z = data.frame(z, score, stringsAsFactors = FALSE)
           z
         }) %>%
         do.call(rbind, .) %>%
         as.data.frame()
       x
-    },
-    .progress = TRUE
+    }, .progress = TRUE
   ) %>%
   do.call(rbind, .) %>%
   as.data.frame()
 
+save(annotation_table, file = "annotation_table")
+
+load("annotation_table")
+
 head(annotation_table)
 
 #####---------------------------------------------------------------------------
-###score distributation
+###score distribution
 temp_data <-
-  annotation_table %>%
-  dplyr::select(compound_class, score) %>%
-  dplyr::distinct(compound_class, score) %>%
-  dplyr::pull(score) %>%
+  annotation_table$score %>%
   table() %>%
   as.data.frame()
 
 colnames(temp_data) <- c("Score", "Freq")
 
-temp_data =
-  temp_data %>%
-  dplyr::mutate(Score = as.numeric(as.character(Score)))
-
 plot <-
   temp_data %>%
   ggplot(aes(Score, Freq)) +
-  geom_bar(stat = "identity",
-           aes(x = Score,
-               y = Freq,
-               fill = Score),
-           show.legend = FALSE) +
-  # scale_fill_manual(
-  #   values = c(
-  #     "20" = "#3F4041FF",
-  #     "30" = "#3F4041FF",
-  #     "40" = "#84D7E1FF",
-  #     "50" = "#84D7E1FF",
-  #     "60" = "#84D7E1FF",
-  #     "70" = "#84D7E1FF",
-  #     "80" = "#84D7E1FF",
-  #     "90" = "#84D7E1FF",
-  #     "100" = "#008EA0FF",
-#     "110" = "#008EA0FF",
-#     "120" = "#008EA0FF",
-#     "130" = "#008EA0FF",
-#     "140" = "#008EA0FF",
-#     "150" = "#008EA0FF",
-#     "160" = "#008EA0FF",
-#     "170" = "#008EA0FF",
-#     "180" = "#008EA0FF",
-#     "190" = "#008EA0FF",
-#     "200" = "#C71000FF"
-#   )
-# ) +
-theme_classic() +
+  geom_bar(stat = "identity", aes(fill = Score), show.legend = FALSE) +
+  scale_fill_manual(
+    values = c(
+      "20" = "#3F4041FF",
+      "30" = "#3F4041FF",
+      "40" = "#84D7E1FF",
+      "50" = "#84D7E1FF",
+      "60" = "#84D7E1FF",
+      "70" = "#84D7E1FF",
+      "80" = "#84D7E1FF",
+      "90" = "#84D7E1FF",
+      "100" = "#008EA0FF",
+      "110" = "#008EA0FF",
+      "120" = "#008EA0FF",
+      "130" = "#008EA0FF",
+      "140" = "#008EA0FF",
+      "150" = "#008EA0FF",
+      "160" = "#008EA0FF",
+      "170" = "#008EA0FF",
+      "180" = "#008EA0FF",
+      "190" = "#008EA0FF",
+      "200" = "#C71000FF"
+    )
+  ) +
+  theme_classic() +
   scale_y_continuous(expand = c(0, 10)) +
-  scale_x_continuous(breaks = seq(0, 200, by = 20),
-                     name = seq(0, 200, by = 20)) +
   theme(
     axis.title = element_text(size = 13),
     axis.text = element_text(size = 12),
@@ -416,13 +399,6 @@ theme_classic() +
       hjust = 1,
       vjust = 1
     )
-  ) +
-  labs(x = "Score") +
-  ggforce::facet_zoom(
-    xlim = c(110, 200),
-    ylim = c(0, 400),
-    horizontal = FALSE,
-    zoom.size = 1
   )
 
 plot
@@ -444,26 +420,23 @@ golden_standard =
   variable_info %>%
   dplyr::filter(!is.na(Level)) %>%
   dplyr::filter(Level == 1 & SS > 0.7) %>%
-  dplyr::select(
-    name,
-    Compound.name2 = Compound.name,
-    CAS.ID2 = CAS.ID,
-    HMDB.ID2 = HMDB.ID,
-    KEGG.ID2 = KEGG.ID,
-    Adduct2 = Adduct,
-    mz.error2 = mz.error,
-    RT.error2 = RT.error,
-    SS2 = SS,
-    Total.score2 = Total.score,
-    Database2 = Database
-  )
+  dplyr::select(name,
+                Compound.name2 = Compound.name,
+                CAS.ID2 = CAS.ID,
+                HMDB.ID2 = HMDB.ID,
+                KEGG.ID2 = KEGG.ID,
+                Adduct2 = Adduct,
+                mz.error2 = mz.error,
+                RT.error2 = RT.error,
+                SS2 = SS,
+                Total.score2 = Total.score,
+                Database2 = Database)
 
 temp_data <-
   golden_standard %>%
   dplyr::left_join(annotation_table, by = "name") %>%
   dplyr::select(
     c(
-      compound_class,
       name,
       Compound.name,
       Compound.name2,
@@ -485,17 +458,12 @@ temp_data <-
   plyr::dlply(.variables = .(name)) %>%
   purrr::map(function(x) {
     x %>%
-      dplyr::arrange(desc(score), compound_class)
+      dplyr::arrange(desc(score))
   })
 
-length(temp_data)
+temp_data[[3]]
 
-temp_data[[2]]
 
-temp_data %>% lapply(function(x)
-  max(x$score))  %>% unlist() %>% `>`(180) %>% which()
-
-temp_data[[196]]
 
 
 #score distribution
@@ -516,33 +484,37 @@ score_rule <-
     stringsAsFactors = FALSE
   )
 
-3 * 3 * 3 * 3
+3*3*3*3
 
 test <- list(c(1, 1), c(1, 0), c(0, 0))
 
 # comb <- vector(mode = "list", length = 3^4)
 comb <- NULL
-for (i in 1:3) {
-  for (j in 1:3) {
-    for (k in 1:3) {
-      for (z in 1:3) {
+for(i in 1:3){
+  
+  for(j in 1:3){
+    
+    for(k in 1:3){
+      
+      for(z in 1:3){
         comb <- c(comb, list(c(test[[i]], test[[j]], test[[k]], test[[z]])))
       }
     }
   }
 }
 
+
 comb <-
   comb %>%
   do.call(cbind, .)
 
 remove_idx <-
-  apply(comb, 2, function(x) {
+  apply(comb, 2, function(x){
     all(x == 0)
   }) %>%
   which()
 
-comb <- comb[, -remove_idx]
+comb <- comb[,-remove_idx]
 
 score <- score_rule$score * comb
 score <- score %>% colSums()
@@ -551,7 +523,7 @@ idx <- order(score, decreasing = TRUE)
 
 score <- score[idx]
 
-comb <- comb[, idx]
+comb <- comb[,idx]
 
 score_rule <-
   data.frame(score_rule, comb, stringsAsFactors = FALSE)
@@ -560,36 +532,25 @@ score_rule <-
 plot1 <-
   data.frame(index = factor(paste('X', 1:length(score), sep = ""),
                             levels = paste('X', 1:length(score), sep = "")),
-             score,
-             stringsAsFactors = TRUE) %>%
+             score, stringsAsFactors = TRUE) %>%
   ggplot(aes(index, score)) +
-  geom_point(
-    stat = "identity",
-    aes(color = as.character(score)),
-    shape = 16,
-    show.legend = FALSE
-  ) +
-  geom_segment(aes(
-    x = index,
-    y = 0,
-    xend = index,
-    yend = score,
-    color = as.character(score)
-  ),
-  show.legend = FALSE) +
+  geom_point(stat = "identity",
+             aes(color = as.character(score)), shape = 16, show.legend = FALSE) +
+  geom_segment(aes(x = index, y = 0, xend = index, yend = score,
+                   color = as.character(score)),
+               show.legend = FALSE) +
   theme_classic() +
   scale_y_continuous(expand = expansion(mult = c(0, .05))) +
   labs(x = "", y = "Score") +
-  theme(
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.title.y = element_text(size = 10),
-    axis.text.y = element_text(size = 10),
-    plot.background = element_rect(fill = "transparent", color = NA),
-    panel.background = element_rect(fill = "transparent", color = NA),
-    legend.background = element_rect(fill = "transparent", color = NA),
-    plot.margin = unit(c(0, 0, 0, 0), "pt")
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_text(size = 10),
+        axis.text.y = element_text(size = 10),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        legend.background = element_rect(fill = "transparent", color = NA),
+        plot.margin = unit(c(0, 0, 0, 0), "pt")
   )
 
 plot1
@@ -597,22 +558,20 @@ plot1
 plot2 <-
   score_rule %>%
   dplyr::select(-score) %>%
-  tidyr::pivot_longer(cols = -rule,
-                      names_to = "index",
+  tidyr::pivot_longer(cols = -rule, names_to = "index",
                       values_to = "value") %>%
-  dplyr::mutate(rule = factor(
-    rule,
-    levels =
-      c(
-        "Adduct M+H",
-        "Isotope (Adduct M+H)",
-        "Other positive adduct",
-        "Isotope (Other positive adduct)",
-        "Adduct M-H",
-        "Isotope (Adduct M-H)",
-        "Other negative adduct",
-        "Isotope (Other negative adduct)"
-      ) %>% rev()
+  dplyr::mutate(rule = factor(rule,
+                              levels =
+                                c(
+                                  "Adduct M+H",
+                                  "Isotope (Adduct M+H)",
+                                  "Other positive adduct",
+                                  "Isotope (Other positive adduct)",
+                                  "Adduct M-H",
+                                  "Isotope (Adduct M-H)",
+                                  "Other negative adduct",
+                                  "Isotope (Other negative adduct)"
+                                ) %>% rev()
   )) %>%
   ggplot(aes(index, rule)) +
   geom_tile(aes(fill = as.character(value)),
@@ -620,40 +579,30 @@ plot2 <-
             show.legend = FALSE) +
   theme_bw() +
   labs(x = "", y = "") +
-  scale_y_discrete(expand = expansion(mult = c(0, 0))) +
+  scale_y_discrete(expand = expansion(mult = c(0,0))) +
   scale_fill_manual(values = c("0" = "white", "1" = "#008EA0FF")) +
-  theme(
-    panel.grid = element_blank(),
-    axis.title.x = element_blank(),
-    axis.text.x = element_blank(),
-    axis.ticks.x = element_blank(),
-    axis.text.y = element_text(size = 10),
-    plot.margin = unit(c(0, 0, 0, 0), "pt")
-  )
+  theme(panel.grid = element_blank(), axis.title.x = element_blank(),
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 10),
+        plot.margin = unit(c(0, 0, 0, 0), "pt"))
 
 plot2
 
 library(patchwork)
 
 plot <-
-  plot1 + plot2 + patchwork::plot_layout(ncol = 1, heights = c(1, 3))
+  plot1 + plot2 + patchwork::plot_layout(ncol = 1, heights = c(1,3))
 
 
 plot
 
-
-ggsave(
-  plot,
-  filename = "score_rule.pdf",
-  width = 12,
-  height = 7,
-  bg = "transparent"
-)
+ggsave(plot, filename = "score_rule.pdf", width = 12, height = 7,
+       bg = "transparent")
 
 
 ###remove redundant annotation according to compound
 library(plyr)
-###redundancy is
+
 calculate_redundance(annotation_table = annotation_table)
 
 annotation_table =
@@ -661,29 +610,28 @@ annotation_table =
 
 calculate_redundance(annotation_table = annotation_table)
 
+
+save(annotation_table, file = "annotation_table")
+load("annotation_table")
+
+
+
+
 ####---------------------------------------------------------------------------
 ####Metabolite set enrichment
 annotation_table <-
   annotation_table %>%
   dplyr::arrange(dplyr::desc(condition))
 
-library(metpath)
-
-data("kegg_hsa_pathway")
-kegg_hsa_pathway
-kegg_hsa_pathway =
-  kegg_hsa_pathway %>%
-  dplyr::filter(!stringr::str_detect(pathway_class, "Disease"))
+library(metPath)
+load("kegg_hsa_pathway.rda")
 
 ###Glycolysis / Gluconeogenesis pathway as an example
-set1 <-
-  list("Glycolysis / Gluconeogenesis pathway" = kegg_hsa_pathway@compound_list[[1]]$KEGG.ID)
+set1 <- list("Glycolysis / Gluconeogenesis pathway" = kegg_hsa_pathway@compound_list[[1]]$KEGG.ID)
 
 feature_table = annotation_table
 head(feature_table)
-metabolite_set = kegg_hsa_pathway
-
-#########fMSEA
+metabolite_set = set1
 ###this is the weight for runing enrichment score
 exponent = 1
 perm_num = 1000
@@ -694,24 +642,23 @@ p_adjust_method = "fdr"
 seed = FALSE
 verbose = TRUE
 
-result <- run_msea(
-  feature_table = feature_table,
-  metabolite_set = metabolite_set,
-  exponent = 1,
-  perm_num = 1000,
-  min_size = 5,
-  max_size = 1000,
-  pvalue_cutoff = 0.25,
-  p_adjust_method = "fdr",
-  seed = TRUE,
-  verbose = TRUE
-)
+result <- do_gsea2(feature_table = feature_table,
+                   metabolite_set = metabolite_set,
+                   exponent = 1,
+                   perm_num = 1000,
+                   min_size = 5,
+                   max_size = 1000,
+                   pvalue_cutoff = 0.25,
+                   p_adjust_method = "fdr",
+                   seed = TRUE,
+                   verbose = TRUE)
 
-msea_plot(x = result, title = result@result$Description[1])
+gsea_plot(x = result, title = result@result$Description[1])
 
-msea_plot(x = head_result[[idx]],
+gsea_plot(x = head_result[[idx]],
           title = paste(head_result[[idx]]@result$p_adjust))
 
 
-msea_plot(x = tail_result[[idx]],
+gsea_plot(x = tail_result[[idx]],
           title = paste(tail_result[[idx]]@result$p_adjust))
+s
