@@ -47,3 +47,13 @@ vignettes/database_construction
 /other_files/*
 example/*
 other_files/
+
+demo_data/
+summary/
+manuscript/
+docs/
+
+demo_data
+summary
+manuscript
+docs
