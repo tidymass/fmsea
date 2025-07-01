@@ -1,5 +1,5 @@
-#' @title calculate_redundancy
-#' @description calculate_redundancy
+#' @title calculate_redundance
+#' @description calculate_redundance
 #' @author Xiaotao Shen
 #' \email{xiaotao.shen@@outlook.com}
 #' @param annotation_table annotation table
@@ -7,7 +7,7 @@
 #' @return redundancy
 #' @export
 
-calculate_redundancy <-
+calculate_redundance <-
   function(annotation_table) {
     if (is(annotation_table, "list")) {
       annotation_table <-
@@ -20,7 +20,7 @@ calculate_redundancy <-
       data.table::as.data.table(annotation_table)
     
     redundancy1 <-
-      annotation_table[, .(number = length(unique(compound_class))), by = Lab.ID]
+      annotation_table[, .(number = length(unique(metabolite_feature_cluster))), by = Lab.ID]
     
     redundancy1 <-
       mean(redundancy1$number)
@@ -31,7 +31,7 @@ calculate_redundancy <-
       pull(N) %>%
       mean()
     
-    c(redundancy1 = redundancy1, redundancy2 = redundancy2)
+    c("mfcs/metabolite" = redundancy1, "metabolites/feature" = redundancy2)
   }
 
 
@@ -74,7 +74,7 @@ remove_redundancy <-
       ###re-calculated confidence score for each compound class.
       annotation_table =
         annotation_table %>%
-        plyr::dlply(.variables = .(compound_class)) %>%
+        plyr::dlply(.variables = .(metabolite_feature_cluster)) %>%
         purrr::map(function(x) {
           score <- score_mfc(x)
           x$score = score

@@ -321,13 +321,13 @@ annotation_table <-
       rt_class <- paste(x$Lab.ID[1], rt_class$class, sep = "_")
       
       x =
-        data.frame(x, compound_class = rt_class, stringsAsFactors = FALSE)
+        data.frame(x, metabolite_feature_cluster = rt_class, stringsAsFactors = FALSE)
       
       x =
-        unique(x$compound_class) %>%
+        unique(x$metabolite_feature_cluster) %>%
         purrr::map(function(y) {
           z =
-            x[x$compound_class == y, , drop = FALSE]
+            x[x$metabolite_feature_cluster == y, , drop = FALSE]
           score <- score_mfc(z)
           z = data.frame(z, score, stringsAsFactors = FALSE)
           z

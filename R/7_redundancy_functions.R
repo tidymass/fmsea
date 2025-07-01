@@ -20,7 +20,7 @@ calculate_redundancy <-
       data.table::as.data.table(annotation_table)
     
     redundancy1 <-
-      annotation_table[, .(number = length(unique(compound_class))), by = Lab.ID]
+      annotation_table[, .(number = length(unique(metabolite_feature_cluster))), by = Lab.ID]
     
     redundancy1 <-
       mean(redundancy1$number)

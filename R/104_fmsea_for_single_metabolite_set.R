@@ -114,7 +114,7 @@
 #'     annotation_table1 <-
 #'       annotation_table[idx, ]
 #'     
-#'     #for each compound_class, if the peaks are in different condition_class
+#'     #for each metabolite_feature_cluster, if the peaks are in different condition_class
 #'     #(for example, if the condition is fold change, some peaks fold change > 1 and some
 #'     #peaks fold change < 1), we should think some method to handle this condition
 #'     

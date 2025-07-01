@@ -71,18 +71,18 @@
 #'     feature_table[idx,] %>%
 #'     dplyr::filter(isotope == "[M]")
 #'   
-#'   ##for each compound_class, if the peaks are in different condition_class,
+#'   ##for each metabolite_feature_cluster, if the peaks are in different condition_class,
 #'   ##then it should be classed into
 #'   ##different classes and then score again
 #'   ##
-#'   ##and if there are [M+H] or [M-H] in the compound_class, only remain them
+#'   ##and if there are [M+H] or [M-H] in the metabolite_feature_cluster, only remain them
 #'   #     feature_table1 <-
 #'   # feature_table1
-#'   #     dplyr::arrange(compound_class) %>%
+#'   #     dplyr::arrange(metabolite_feature_cluster) %>%
 #'   #     dplyr::mutate(fc_class =
 #'   #                     dplyr::case_when(fc >= 0 ~ "increase",
 #'   #                                      TRUE ~ "decrease")) %>%
-#'   #     plyr::dlply(.variables = .(compound_class)) %>%
+#'   #     plyr::dlply(.variables = .(metabolite_feature_cluster)) %>%
 #'   #     purrr::map(
 #'   #       .f = function(x) {
 #'   #         if (length(unique(x$fc_class)) != 1) {
@@ -117,7 +117,7 @@
 #'   #     dplyr::filter(isotope == "[M]")
 #'   #
 #'   #
-#'   # ##for each Lab.ID, only remain the compound_class with the max score
+#'   # ##for each Lab.ID, only remain the metabolite_feature_cluster with the max score
 #'   #     feature_table1 <-
 #'   #       feature_table1 %>%
 #'   #       plyr::dlply(.variables = .(Lab.ID)) %>%
@@ -434,7 +434,7 @@
 #'   Phit[hits] <-
 #'     (abs(feature_table$condition[hits]) * (feature_table$score[hits] / 100)) ^ exponent
 #'   #   score <- feature_table$score[hits]
-#'   #   compound_class <- feature_table$compound_class[hits]
+#'   #   metabolite_feature_cluster <- feature_table$metabolite_feature_cluster[hits]
 #'   #
 #'   #   temp_data <- data.frame(
 #'   #     index = 1:sum(hits),
@@ -448,7 +448,7 @@
 #'   #     ggplot(aes(index, phit)) +
 #'   #     geom_point() +
 #'   #     geom_point(
-#'   #       aes(x = index, y = phit, color = compound_class),
+#'   #       aes(x = index, y = phit, color = metabolite_feature_cluster),
 #'   #       show.legend = FALSE,
 #'   #       data = temp_data %>% filter(Lab.ID == unique(Lab.ID)[idx])
 #'   #     ) +
@@ -456,8 +456,8 @@
 #'   #       aes(
 #'   #         x = index,
 #'   #         y = phit,
-#'   #         label = paste(compound_class, score, Adduct, isotope, sep = ":"),
-#'   #         color = compound_class
+#'   #         label = paste(metabolite_feature_cluster, score, Adduct, isotope, sep = ":"),
+#'   #         color = metabolite_feature_cluster
 #'   #       ),
 #'   #       show.legend = FALSE,
 #'   #       data = temp_data %>% filter(Lab.ID == unique(Lab.ID)[idx])

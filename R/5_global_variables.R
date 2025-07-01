@@ -62,7 +62,7 @@ globalVariables(
     "fill",
     "n",
     "x",
-    "compound_class",
+    "metabolite_feature_cluster",
     "N"
   )
 )

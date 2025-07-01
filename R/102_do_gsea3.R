@@ -44,7 +44,7 @@
 #'   feature_table1 <-
 #'     feature_table[idx,]
 #'   
-#'   #for each compound_class, if the peaks are in different condition_class
+#'   #for each metabolite_feature_cluster, if the peaks are in different condition_class
 #'   #(for example, if the condition is fold change, some peaks fold change > 1 and some
 #'   #peaks fold change < 1), we should think some method to handle this condition
 #'   
@@ -383,7 +383,7 @@
 #'   p_hit[hits] <-
 #'     (abs(feature_table$condition[hits])) ^ exponent
 #'   #   score <- feature_table$score[hits]
-#'   #   compound_class <- feature_table$compound_class[hits]
+#'   #   metabolite_feature_cluster <- feature_table$metabolite_feature_cluster[hits]
 #'   #
 #'   #   temp_data <- data.frame(
 #'   #     index = 1:sum(hits),
@@ -397,7 +397,7 @@
 #'   #     ggplot(aes(index, p_hit)) +
 #'   #     geom_point() +
 #'   #     geom_point(
-#'   #       aes(x = index, y = p_hit, color = compound_class),
+#'   #       aes(x = index, y = p_hit, color = metabolite_feature_cluster),
 #'   #       show.legend = FALSE,
 #'   #       data = temp_data %>% filter(Lab.ID == unique(Lab.ID)[idx])
 #'   #     ) +
@@ -405,8 +405,8 @@
 #'   #       aes(
 #'   #         x = index,
 #'   #         y = p_hit,
-#'   #         label = paste(compound_class, score, Adduct, isotope, sep = ":"),
-#'   #         color = compound_class
+#'   #         label = paste(metabolite_feature_cluster, score, Adduct, isotope, sep = ":"),
+#'   #         color = metabolite_feature_cluster
 #'   #       ),
 #'   #       show.legend = FALSE,
 #'   #       data = temp_data %>% filter(Lab.ID == unique(Lab.ID)[idx])
