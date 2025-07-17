@@ -1,7 +1,42 @@
+#' Extract File Extension
+#'
+#' Extracts the extension (e.g., "csv", "xlsx") from a file name.
+#'
+#' @param file Character string. The file name or full path.
+#'
+#' @return A character string representing the file extension.
+#'
+#' @author Xiaotao Shen \email{xiaotao.shen@outlook.com}
+#'
+#' @examples
+#' get_extension("data/sample.csv")
+#' get_extension("report.final.xlsx")
 get_extension = function(file) {
   tail(stringr::str_split(string = file, pattern = "\\.")[[1]], 1)
 }
 
+#' Read a Table from CSV or Excel Files
+#'
+#' Reads a data table from a file, automatically detecting the format
+#' based on its extension (`csv`, `xlsx`, or `xls`). Supports additional
+#' arguments passed to the underlying reading functions.
+#'
+#' @param file Character. The file path to read.
+#' @param ... Additional parameters passed to `readr::read_csv()` or
+#'   `readxl::read_xlsx()` / `readxl::read_xls()`.
+#'
+#' @return A data frame containing the table contents.
+#'
+#' @author Xiaotao Shen \email{xiaotao.shen@outlook.com}
+#'
+#' @examples
+#' \dontrun{
+#' # Read CSV file
+#' df_csv <- readTable("data/example.csv")
+#'
+#' # Read Excel file (.xlsx)
+#' df_xlsx <- readTable("data/example.xlsx")
+#' }
 readTable = function(file, ...) {
   extension <- get_extension(file = file)
   if (extension == "csv") {

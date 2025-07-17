@@ -1,3 +1,44 @@
+#' Check the Format and Integrity of a Feature Table
+#'
+#' Performs a series of checks on a feature table to ensure it meets
+#' the expected structure and content required for downstream analysis.
+#' The table must contain exactly six columns with specific names and types.
+#'
+#' @param feature_table A `data.frame` with exactly six columns named:
+#'   `variable_id`, `mz`, `rt`, `condition`, `polarity`, and `mean_intensity`.
+#'   Each column must conform to specific data types and constraints.
+#'
+#' @return Returns `TRUE` (invisibly) if all checks pass. Otherwise, the function
+#'   stops with an informative error message.
+#'
+#' @details
+#' The function checks:
+#' \itemize{
+#'   \item That `feature_table` is a `data.frame`
+#'   \item That it has exactly six columns
+#'   \item That column names and order match the expected names
+#'   \item That data types are correct for each column
+#'   \item That `variable_id` values are unique
+#'   \item That `polarity` only contains "positive" or "negative"
+#' }
+#'
+#' @author Xiaotao Shen \email{xiaotao.shen@outlook.com}
+#'
+#' @examples
+#' # Example feature table
+#' feature_table <- data.frame(
+#'   variable_id = c("M1", "M2"),
+#'   mz = c(100.1, 200.2),
+#'   rt = c(300, 400),
+#'   condition = c(1, 2),
+#'   polarity = c("positive", "negative"),
+#'   mean_intensity = c(123456, 654321)
+#' )
+#'
+#' check_feature_table(feature_table)
+#'
+#' @export
+
 check_feature_table <-
   function(feature_table) {
     # Check class
@@ -66,6 +107,43 @@ check_feature_table <-
     invisible(TRUE)
   }
 
+
+
+#' Check the Format of an MS2 Annotation Table
+#'
+#' Validates that the MS2 annotation table meets required structural and type specifications.
+#' The function checks for required columns and ensures proper data types for each.
+#'
+#' @param check_annotation_table_ms2 A `data.frame` containing MS2 annotation results.
+#'   It must include the following columns: `variable_id`, `mz`, `rt`, `HMDB.ID`, and `KEGG.ID`.
+#'
+#' @return Returns `TRUE` (invisibly) if all checks pass. Otherwise, stops with an informative error message.
+#'
+#' @details The function performs the following checks:
+#' \itemize{
+#'   \item `check_annotation_table_ms2` must be a data frame
+#'   \item Required columns: `variable_id`, `mz`, `rt`, `HMDB.ID`, `KEGG.ID`
+#'   \item `variable_id`: character, unique
+#'   \item `mz` and `rt`: numeric
+#'   \item `HMDB.ID` and `KEGG.ID`: character (can include `NA`)
+#' }
+#'
+#' @author Xiaotao Shen \email{xiaotao.shen@outlook.com}
+#'
+#' @examples
+#' # Example annotation table
+#' annotation_table <- data.frame(
+#'   variable_id = c("M1", "M2"),
+#'   mz = c(100.1, 200.2),
+#'   rt = c(300, 400),
+#'   HMDB.ID = c("HMDB00001", NA),
+#'   KEGG.ID = c("C00031", NA),
+#'   stringsAsFactors = FALSE
+#' )
+#'
+#' check_annotation_table_ms2(annotation_table)
+#'
+#' @export
 
 check_annotation_table_ms2 <-
   function(check_annotation_table_ms2) {

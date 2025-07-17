@@ -1,3 +1,57 @@
+#' Annotate Metabolite Features Using MS1 and MS2 Data
+#'
+#' Performs metabolite annotation for LC-MS feature tables using MS1 data, with optional integration of MS2-based annotations.
+#' The function supports polarity-specific annotation, adduct handling, isotope identification, and redundant annotation reduction.
+#'
+#' @param feature_table A data frame with metabolite features. Must include columns:
+#'   `variable_id`, `mz`, `rt`, `condition`, `polarity`, and `mean_intensity`.
+#' @param annotation_table_ms2 (Optional) A data frame containing MS2-based annotations.
+#'   Must include `variable_id`, `mz`, `rt`, `KEGG.ID`, and other identification information.
+#' @param column Character. Chromatographic column type: either `"rp"` (reverse-phase) or `"hilic"`. Default is `"rp"`.
+#' @param metabolite_database A metabolite database object (from `metid`) used for annotation.
+#' @param ms1_match_ppm Numeric. m/z tolerance (in ppm) for MS1 matching. Default is 15.
+#' @param mfc_rt_tol Numeric. Retention time tolerance (in seconds) for metabolite feature cluster scoring. Default is 5.
+#' @param isotope_number Integer. Maximum number of isotopes to annotate. Default is 3.
+#'
+#' @return A data frame containing the final annotated metabolite feature table. It includes matched annotations,
+#'   isotope annotations, compound-level metadata, and scoring metrics.
+#'
+#' @details
+#' The function includes the following steps:
+#' \itemize{
+#'   \item MS1-based metabolite annotation (positive and negative modes separately)
+#'   \item Optional inclusion of MS2-based annotations
+#'   \item Isotope matching and scoring
+#'   \item Feature merging into metabolite feature clusters (MFCs)
+#'   \item Annotation quality scoring and redundancy calculation
+#' }
+#'
+#' Parallel computing is enabled for isotope annotation using `future` and `furrr` packages.
+#'
+#' @author Xiaotao Shen \email{xiaotao.shen@outlook.com}
+#'
+#' @examples
+#' \dontrun{
+#' data("example_feature_table")
+#' data("example_metabolite_database")
+#'
+#' annotated <- annotate_feature_table(
+#'   feature_table = example_feature_table,
+#'   metabolite_database = example_metabolite_database,
+#'   column = "rp",
+#'   ms1_match_ppm = 15,
+#'   mfc_rt_tol = 5
+#' )
+#' }
+#'
+#' @importFrom dplyr filter select mutate left_join arrange desc pull
+#' @importFrom stringr str_extract str_replace
+#' @importFrom future plan multisession
+#' @importFrom furrr future_map
+#' @importFrom data.table as.data.table rbindlist
+#'
+#' @export
+
 annotate_feature_table <-
   function(feature_table,
            annotation_table_ms2,
@@ -7,7 +61,6 @@ annotate_feature_table <-
            mfc_rt_tol = 5,
            isotope_number = 3) {
     column = match.arg(column)
-    
     ####feature_table is required
     ###check feature_table
     if (missing(feature_table)) {
@@ -373,21 +426,21 @@ annotate_feature_table <-
     ####combine peaks to metabolite feature cluster (MFC)
     message("Scoring metabolite feature clusters...\n")
     annotation_table_final <-
-      score_annotation_table(annotation_table = annotation_table_final, 
-                             mfc_rt_tol = mfc_rt_tol)
+      score_annotation_table(annotation_table = annotation_table_final, mfc_rt_tol = mfc_rt_tol)
     
     
     ###remove redundant annotation according to metabolite
     # library(plyr)
     ###redundancy is
-    calculate_redundance(annotation_table = annotation_table_final)
+    # browser()
+    calculate_redundancy(annotation_table = annotation_table_final)
     
     # message("Removing redundancy...\n")
     #
     # annotation_table_final <-
     #   remove_redundancy(annotation_table = annotation_table_final)
     #
-    # calculate_redundance(annotation_table = annotation_table_final)
+    # calculate_redundancy(annotation_table = annotation_table_final)
     
     
     ####---------------------------------------------------------------------------
@@ -399,6 +452,43 @@ annotate_feature_table <-
     # unlink(file.path(path, "Result"), recursive = TRUE)
     return(annotation_table_final)
   }
+
+
+
+
+#' Score Metabolite Feature Clusters (MFCs) Based on RT Grouping
+#'
+#' Assigns metabolite feature clusters (MFCs) within each compound (`Lab.ID`) by grouping features based on retention time (RT)
+#' and calculating a cluster-level score using `score_mfc()`. Each feature is tagged with a `metabolite_feature_cluster` identifier and a computed `score`.
+#'
+#' @param annotation_table A data frame containing annotated metabolite features. Must include at least the columns
+#'   `Lab.ID` and `rt` (retention time).
+#' @param mfc_rt_tol Numeric. Retention time tolerance (in seconds) used for grouping features into the same cluster. Default is 10.
+#'
+#' @return A data frame with an additional `metabolite_feature_cluster` column (unique cluster ID) and `score` column for each feature.
+#'
+#' @details
+#' \itemize{
+#'   \item Features are grouped by `Lab.ID`, then clustered into MFCs based on RT proximity.
+#'   \item Each MFC is scored via the `score_mfc()` function (assumed to be user-defined).
+#'   \item Parallel computation is used via `furrr::future_map()` for faster processing.
+#' }
+#'
+#' @author Xiaotao Shen \email{xiaotao.shen@outlook.com}
+#'
+#' @examples
+#' \dontrun{
+#' data("example_annotation_table")
+#' scored_table <- score_annotation_table(annotation_table = example_annotation_table, mfc_rt_tol = 5)
+#' head(scored_table)
+#' }
+#'
+#' @importFrom dplyr filter arrange
+#' @importFrom furrr future_map
+#' @importFrom purrr map
+#' @importFrom future plan multisession
+#'
+#' @export
 
 score_annotation_table <-
   function(annotation_table, mfc_rt_tol = 10) {

@@ -19,7 +19,7 @@
 ##' @param seed set seed inside the function to make result reproducible. FALSE by default.
 ##' @param USER_DATA annotation data
 ##' @param by one of 'fmsea' or 'DOSE'
-##' @param ... other parameter
+##' @param ... other parameters
 ##' @return mseaResult object
 ##' @author Yu Guangchuang
 MSEA_internal <- function(annotation_table,
