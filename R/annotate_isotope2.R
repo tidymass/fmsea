@@ -76,7 +76,7 @@ annotate_isotope2 <-
     
     formula1 <-
       masstools::sum_formula(formula = formula, adduct = adduct)
-    ###should be fix latter
+    ###should be fix later
     if (is.na(formula1)) {
       formula1 <- formula
     }
