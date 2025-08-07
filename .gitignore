@@ -48,14 +48,24 @@ vignettes/database_construction
 example/*
 other_files/
 
+demo_data
 demo_data/
+
+demo_code
 demo_code/
+
+summary
 summary/
+
+manuscript
 manuscript/
+
+docs
 docs/
 
-demo_data
-demo_code
-summary
-manuscript
-docs
+test
+test/
+
+data
+data/
+
