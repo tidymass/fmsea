@@ -124,7 +124,7 @@ annotate_feature_table <-
           column = column,
           polarity = "positive",
           database = metabolite_database,
-          candidate.num = 1000
+          candidate.num = 1000 # one feature can match 1000 metabolites at most
         )
       
       annotation_table_ms1_pos <-
@@ -256,13 +256,13 @@ annotate_feature_table <-
           furrr::future_map(
             .x = 1:nrow(annotation_table_final_pos),
             .f = function(x) {
-              # cat(x, " ")
+              #cat(x, " ")
               adduct <-
                 stringr::str_extract(annotation_table_final_pos$Adduct[x], "\\(.+\\)") %>%
                 stringr::str_replace("\\(", "") %>%
                 stringr::str_replace("\\)", "")
               
-              temp_iso <- try(annotate_isotope(
+              temp_iso <- try(annotate_isotope2(
                 formula = annotation_table_final_pos$Formula[x],
                 adduct = adduct,
                 mz = annotation_table_final_pos$mz[x],
@@ -272,7 +272,7 @@ annotate_feature_table <-
                 peak.rt = feature_table_pos$rt,
                 peak.int = feature_table_pos$mean_intensity,
                 rt.tol = mfc_rt_tol,
-                mz.tol = ms1.match.ppm,
+                mz.tol = ms1_match_ppm,
                 int.tol = 0.3,
                 max.isotope = 3
               ),
@@ -317,7 +317,7 @@ annotate_feature_table <-
               temp_iso$CE <- annotation_table_final_pos$CE[x]
               
               temp_iso$mz.match.score <-
-                (ms1.match.ppm - temp_iso$mz.error) / ms1.match.ppm
+                (ms1_match_ppm - temp_iso$mz.error) / ms1_match_ppm
               temp_iso$RT.match.score <-
                 (mfc_rt_tol - temp_iso$RT.error) / mfc_rt_tol
               temp_iso %>%
@@ -347,7 +347,7 @@ annotate_feature_table <-
               stringr::str_replace("\\(", "") %>%
               stringr::str_replace("\\)", "")
             
-            temp_iso <- try(annotate_isotope(
+            temp_iso <- try(annotate_isotope2(
               formula = annotation_table_final_neg$Formula[x],
               adduct = adduct,
               mz = annotation_table_final_neg$mz[x],
@@ -357,7 +357,7 @@ annotate_feature_table <-
               peak.rt = feature_table_neg$rt,
               peak.int = feature_table_neg$mean_intensity,
               rt.tol = mfc_rt_tol,
-              mz.tol = ms1.match.ppm,
+              mz.tol = ms1_match_ppm,
               int.tol = 0.3,
               max.isotope = 3
             ),
@@ -402,7 +402,7 @@ annotate_feature_table <-
             temp_iso$CE <- annotation_table_final_neg$CE[x]
             
             temp_iso$mz.match.score <-
-              (ms1.match.ppm - temp_iso$mz.error) / ms1.match.ppm
+              (ms1_match_ppm - temp_iso$mz.error) / ms1_match_ppm
             temp_iso$RT.match.score <-
               (mfc_rt_tol - temp_iso$RT.error) / mfc_rt_tol
             temp_iso %>%
