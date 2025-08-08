@@ -31,7 +31,7 @@
 #'   variable_id = c("M1", "M1", "M2", "M2", "M3"),
 #'   stringsAsFactors = FALSE
 #' )
-#' 
+#'
 #' calculate_redundancy(annotation_table)
 #'
 #' @export
@@ -60,8 +60,8 @@ calculate_redundancy <-
       pull(N) %>%
       mean()
     
-    c(redundancy1 = redundancy1,
-      redundancy2 = redundancy2)
+    c("mfc per metabolite" = redundancy1,
+      "metabolite per feature" = redundancy2)
   }
 
 
@@ -130,7 +130,7 @@ remove_redundancy <-
       ##annotations with score <= 20
       annotation_table <-
         annotation_table %>%
-        dplyr::group_by(name) %>%
+        dplyr::group_by(variable_id) %>%
         dplyr::filter(if (any(score > 100)) {
           score > 20
         } else{
@@ -140,6 +140,7 @@ remove_redundancy <-
       
       
       ###re-calculated confidence score for each compound class.
+      library(plyr)
       annotation_table =
         annotation_table %>%
         plyr::dlply(.variables = .(metabolite_feature_cluster)) %>%
@@ -158,5 +159,3 @@ remove_redundancy <-
     
     annotation_table
   }
-
-

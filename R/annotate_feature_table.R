@@ -124,7 +124,7 @@ annotate_feature_table <-
           column = column,
           polarity = "positive",
           database = metabolite_database,
-          candidate.num = 1000 # one feature can match 1000 metabolites at most
+          candidate.num = 1000
         )
       
       annotation_table_ms1_pos <-
@@ -256,13 +256,13 @@ annotate_feature_table <-
           furrr::future_map(
             .x = 1:nrow(annotation_table_final_pos),
             .f = function(x) {
-              #cat(x, " ")
+              # cat(x, " ")
               adduct <-
                 stringr::str_extract(annotation_table_final_pos$Adduct[x], "\\(.+\\)") %>%
                 stringr::str_replace("\\(", "") %>%
                 stringr::str_replace("\\)", "")
               
-              temp_iso <- try(annotate_isotope2(
+              temp_iso <- try(annotate_isotope(
                 formula = annotation_table_final_pos$Formula[x],
                 adduct = adduct,
                 mz = annotation_table_final_pos$mz[x],
@@ -330,6 +330,25 @@ annotate_feature_table <-
       )
     }
     
+    # #############debug
+    # dim(isotope_pos)
+    # dim(isotope_pos2)
+    # id1 <-
+    # paste(isotope_pos$variable_id, isotope_pos$Compound.name, isotope_pos$Adduct, isotope_pos$Lab.ID, isotope_pos$isotope, sep = "_")
+    # id2 <-
+    #   paste(isotope_pos2$variable_id, isotope_pos2$Compound.name, isotope_pos2$Adduct, isotope_pos2$Lab.ID, isotope_pos2$isotope, sep = "_")
+    #
+    # setdiff(id1, id2)
+    # setdiff(id2, id1)
+    #
+    # which(id2 == "M138T841_POS_1,2-Dimethylhydrazine_(M-H+2K)+_C19176_[M+1]")
+    # isotope_pos2[80,]
+    #
+    # annotation_table_final_pos %>%
+    #   dplyr::filter( Compound.name == "1,2-Dimethylhydrazine" & Lab.ID == "C19176" & Adduct == "(M-H+2K)+")
+    #--------------------------
+    
+    
     annotation_table_final_pos <-
       rbind(annotation_table_final_pos, isotope_pos) %>%
       as.data.frame() %>%
@@ -347,7 +366,7 @@ annotate_feature_table <-
               stringr::str_replace("\\(", "") %>%
               stringr::str_replace("\\)", "")
             
-            temp_iso <- try(annotate_isotope2(
+            temp_iso <- try(annotate_isotope(
               formula = annotation_table_final_neg$Formula[x],
               adduct = adduct,
               mz = annotation_table_final_neg$mz[x],

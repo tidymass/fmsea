@@ -73,7 +73,6 @@ annotate_isotope <-
            mz.tol = 15,
            int.tol = 0.3,
            max.isotope = 3) {
-    
     formula1 <-
       masstools::sum_formula(formula = formula, adduct = adduct)
     ###should be fix latter
@@ -123,7 +122,8 @@ annotate_isotope <-
             abs(as.numeric(x[2]) - peak.int) / peak.int
           
           idx <- which(mz.error <= mz.tol &
-                         rt.error < rt.tol & intensity.error < int.tol)
+                         rt.error < rt.tol &
+                         intensity.error < int.tol)
           
           if (length(idx) == 0) {
             return(NULL)
@@ -138,7 +138,6 @@ annotate_isotope <-
       ) %>%
       do.call(rbind, .) %>%
       as.data.frame()
-    
     
     if (nrow(iso.info) == 0) {
       return(NULL)
